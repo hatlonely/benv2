@@ -9,17 +9,16 @@ import (
 	"syscall"
 
 	"github.com/hatlonely/go-kit/refx"
-	"github.com/hatlonely/go-kit/strx"
 	"github.com/pkg/errors"
 )
 
 type ShellDriverOptions struct {
-	Shebang string            `dft:"bash"`
-	Args    []string          `dft:"-c"`
+	Shebang string   `dft:"bash"`
+	Args    []string `dft:"-c"`
 	Envs    map[string]string
 }
 
-type ShellDriver struct{
+type ShellDriver struct {
 	shebang string
 	args    []string
 	envs    []string
@@ -53,8 +52,6 @@ type ShellDriverRes struct {
 func (d *ShellDriver) Do(v interface{}) (interface{}, error) {
 	req := &ShellDriverReq{}
 	err := refx.InterfaceToStruct(v, &req)
-
-	fmt.Println(strx.JsonMarshalIndentSortKeys(req))
 	if err != nil {
 		return nil, errors.WithMessage(err, "InterfaceToStruct failed")
 	}
