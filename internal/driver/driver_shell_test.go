@@ -4,16 +4,14 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-
 )
-
 
 func TestShellDriver(t *testing.T) {
 	Convey("TestShellDriver", t, func() {
 		d, err := NewShellDriverWithOptions(&ShellDriverOptions{
 			Shebang: "bash",
 			Args:    []string{"-c"},
-			Envs: map[string]string{},
+			Envs:    map[string]string{},
 		})
 		So(err, ShouldBeNil)
 
@@ -28,4 +26,3 @@ func TestShellDriver(t *testing.T) {
 		})
 	})
 }
-
