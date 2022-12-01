@@ -37,6 +37,15 @@ func NewShellDriverWithOptions(options *ShellDriverOptions) (*ShellDriver, error
 	}, nil
 }
 
+func (d *ShellDriver) Do(v interface{}) (interface{}, error) {
+	req := &ShellDriverReq{}
+	err := refx.InterfaceToStruct(v, &req)
+	if err != nil {
+		return nil, errors.WithMessage(err, "InterfaceToStruct failed")
+	}
+	return d.do(req)
+}
+
 type ShellDriverReq struct {
 	Command string
 	Envs    map[string]string
@@ -47,15 +56,6 @@ type ShellDriverRes struct {
 	Stdout   string
 	Stderr   string
 	ExitCode int
-}
-
-func (d *ShellDriver) Do(v interface{}) (interface{}, error) {
-	req := &ShellDriverReq{}
-	err := refx.InterfaceToStruct(v, &req)
-	if err != nil {
-		return nil, errors.WithMessage(err, "InterfaceToStruct failed")
-	}
-	return d.do(req)
 }
 
 func (d *ShellDriver) do(req *ShellDriverReq) (*ShellDriverRes, error) {
