@@ -135,14 +135,16 @@ func (d *WrapDriver) Do(v interface{}) (interface{}, error) {
 
 	mt := method.Type()
 	if mt.NumIn() == 0 {
+		// func()
 		return resultToInterface(mt, method.Call([]reflect.Value{}))
 	}
 	if mt.NumIn() == 1 {
-		// 只有一个 context.Context 参数
+		// func(ctx)
 		if mt.In(0) == reflect.TypeOf((*context.Context)(nil)).Elem() {
 			return resultToInterface(mt, method.Call([]reflect.Value{reflect.ValueOf(context.Background())}))
 		}
 
+		// func(req)
 		req := reflect.New(mt.In(0))
 		err := refx.InterfaceToStruct(v, req.Interface())
 		if err != nil {
@@ -151,18 +153,20 @@ func (d *WrapDriver) Do(v interface{}) (interface{}, error) {
 		return resultToInterface(mt, method.Call([]reflect.Value{req.Elem()}))
 	}
 	if mt.NumIn() == 2 {
-		// 第一个参数必须为 context.Context
-		if mt.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
-			return nil, errors.Errorf("the first parameter should be context.Context")
+		// func(ctx, req)
+		if mt.In(0) == reflect.TypeOf((*context.Context)(nil)).Elem() {
+			req := reflect.New(mt.In(1))
+			err := refx.InterfaceToStruct(v, req.Interface())
+			if err != nil {
+				return nil, errors.WithMessage(err, "refx.InterfaceToStruct failed")
+			}
+			return resultToInterface(mt, method.Call([]reflect.Value{reflect.ValueOf(context.Background()), req.Elem()}))
 		}
-
-		req := reflect.New(mt.In(1))
-		err := refx.InterfaceToStruct(v, req.Interface())
-		if err != nil {
-			return nil, errors.WithMessage(err, "refx.InterfaceToStruct failed")
-		}
-		return resultToInterface(mt, method.Call([]reflect.Value{reflect.ValueOf(context.Background()), req.Elem()}))
 	}
+
+	// TODO func(ctx, req)
+
+	// TODO func(arg1, arg2)
 
 	return nil, errors.Errorf("too many parameters")
 }
