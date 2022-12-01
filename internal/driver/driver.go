@@ -164,11 +164,33 @@ func (d *WrapDriver) Do(v interface{}) (interface{}, error) {
 		}
 	}
 
-	// TODO func(ctx, req)
+	var args []reflect.Value
+	idx := 0
+	// func(ctx, arg1, arg2, ...)
+	if mt.In(0) == reflect.TypeOf((*context.Context)(nil)).Elem() {
+		args = append(args, reflect.ValueOf(context.Background()))
+		idx++
+	}
+	// func(arg1, arg2, ...)
+	argsV, err := refx.InterfaceGet(v, "args")
+	if err != nil {
+		return nil, errors.Errorf("missing required field args")
+	}
+	argsRv := reflect.ValueOf(argsV)
+	if argsRv.Type().Kind() != reflect.Slice {
+		return nil, errors.Errorf("args should be slice")
+	}
+	for i := 0; i < argsRv.Len(); i++ {
+		arg := reflect.New(mt.In(idx))
+		err := refx.InterfaceToStruct(argsRv.Index(i).Interface(), arg.Interface())
+		if err != nil {
+			return nil, errors.WithMessage(err, "refx.InterfaceToStruct failed")
+		}
+		args = append(args, arg.Elem())
+		idx++
+	}
 
-	// TODO func(arg1, arg2)
-
-	return nil, errors.Errorf("too many parameters")
+	return resultToInterface(mt, method.Call(args))
 }
 
 func resultToInterface(mt reflect.Type, results []reflect.Value) (interface{}, error) {

@@ -77,6 +77,28 @@ func (a *A) Func2CtxErr(ctx context.Context, req *Func2Req) (*Func2Res, error) {
 	}, nil
 }
 
+type Func3Res struct {
+	A int
+	B int
+	C string
+}
+
+func (a *A) Func3Err(a_ int, b int, c string) (*Func3Res, error) {
+	return &Func3Res{
+		A: a_,
+		B: b,
+		C: c,
+	}, nil
+}
+
+func (a *A) Func3CtxErr(ctx context.Context, a_ int, b int, c string) (*Func3Res, error) {
+	return &Func3Res{
+		A: a_,
+		B: b,
+		C: c,
+	}, nil
+}
+
 func TestWrapDriver(t *testing.T) {
 	Convey("TestWrapDriver", t, func() {
 		d, err := NewWrapDriverWithMethodKey(NewAWithOptions, "Method")(&AOptions{
@@ -137,6 +159,42 @@ func TestWrapDriver(t *testing.T) {
 			So(res, ShouldResemble, map[string]interface{}{
 				"ResF1": "val2val2",
 				"ResF2": int64(44),
+			})
+		})
+
+		Convey("Func3Err", func() {
+			res, err := d.Do(map[string]interface{}{
+				"Method": "Func3Err",
+				"args": []interface{}{
+					1,
+					"2",
+					"val3",
+				},
+			})
+			So(err, ShouldBeNil)
+
+			So(res, ShouldResemble, map[string]interface{}{
+				"A": int64(1),
+				"B": int64(2),
+				"C": "val3",
+			})
+		})
+
+		Convey("Func3CtxErr", func() {
+			res, err := d.Do(map[string]interface{}{
+				"Method": "Func3CtxErr",
+				"args": []interface{}{
+					1,
+					"2",
+					"val3",
+				},
+			})
+			So(err, ShouldBeNil)
+
+			So(res, ShouldResemble, map[string]interface{}{
+				"A": int64(1),
+				"B": int64(2),
+				"C": "val3",
 			})
 		})
 	})
