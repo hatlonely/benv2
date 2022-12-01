@@ -8,7 +8,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/hatlonely/go-kit/refx"
 	"github.com/pkg/errors"
 )
 
@@ -37,15 +36,6 @@ func NewShellDriverWithOptions(options *ShellDriverOptions) (*ShellDriver, error
 	}, nil
 }
 
-func (d *ShellDriver) Do(v interface{}) (interface{}, error) {
-	req := &ShellDriverReq{}
-	err := refx.InterfaceToStruct(v, &req)
-	if err != nil {
-		return nil, errors.WithMessage(err, "InterfaceToStruct failed")
-	}
-	return d.do(req)
-}
-
 type ShellDriverReq struct {
 	Command string
 	Envs    map[string]string
@@ -58,7 +48,7 @@ type ShellDriverRes struct {
 	ExitCode int
 }
 
-func (d *ShellDriver) do(req *ShellDriverReq) (*ShellDriverRes, error) {
+func (d *ShellDriver) Do(req *ShellDriverReq) (*ShellDriverRes, error) {
 	var envs []string
 	for k, v := range req.Envs {
 		envs = append(envs, fmt.Sprintf(`%s=%s`, k, strings.TrimSpace(v)))

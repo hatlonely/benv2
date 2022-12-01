@@ -4,8 +4,9 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/hatlonely/go-kit/refx"
 	jsoniter "github.com/json-iterator/go"
+
+	"github.com/hatlonely/go-kit/refx"
 	"github.com/pkg/errors"
 )
 
