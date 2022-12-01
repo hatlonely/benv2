@@ -76,14 +76,6 @@ func TestEvaluable_Evaluate(t *testing.T) {
 	})
 }
 
-// cpu: Intel(R) Core(TM) i5-6600 CPU @ 3.30GHz
-// BenchmarkDeepCopy
-// BenchmarkDeepCopy/deepCopyByRefxSet
-// BenchmarkDeepCopy/deepCopyByRefxSet-4         	  267333	      4251 ns/op
-// BenchmarkDeepCopy/deepCopyByJsonMarshal
-// BenchmarkDeepCopy/deepCopyByJsonMarshal-4     	  618873	      1952 ns/op
-// BenchmarkDeepCopy/deepCopyByGoDeepcopy
-// BenchmarkDeepCopy/deepCopyByGoDeepcopy-4      	  637680	      1871 ns/op
 func TestDeepCopy(t *testing.T) {
 	Convey("TestDeepCopy", t, func() {
 		src := map[string]interface{}{
@@ -111,6 +103,14 @@ func TestDeepCopy(t *testing.T) {
 	})
 }
 
+//cpu: Intel(R) Core(TM) i5-6600 CPU @ 3.30GHz
+//BenchmarkDeepCopy
+//BenchmarkDeepCopy/deepCopyByRefxSet
+//BenchmarkDeepCopy/deepCopyByRefxSet-4         	  223759	      5377 ns/op
+//BenchmarkDeepCopy/deepCopyByJsonMarshal
+//BenchmarkDeepCopy/deepCopyByJsonMarshal-4     	  534944	      2572 ns/op
+//BenchmarkDeepCopy/deepCopyByGoDeepcopy
+//BenchmarkDeepCopy/deepCopyByGoDeepcopy-4      	  568191	      2015 ns/op
 func BenchmarkDeepCopy(b *testing.B) {
 	src := map[string]interface{}{
 		"Key1": "val1",

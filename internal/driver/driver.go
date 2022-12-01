@@ -2,13 +2,39 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
+	"strconv"
+	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/hatlonely/go-kit/refx"
 	"github.com/pkg/errors"
 )
+
+func init() {
+	// 数值转换成 int64，默认都是 float64
+	jsoniter.RegisterTypeDecoderFunc("interface {}", func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+		switch iter.WhatIsNext() {
+		case jsoniter.NumberValue:
+			var number json.Number
+			iter.ReadVal(&number)
+			i, err := strconv.ParseInt(string(number), 10, 64)
+			if err == nil {
+				*(*interface{})(ptr) = i
+				return
+			}
+			f, err := strconv.ParseFloat(string(number), 64)
+			if err == nil {
+				*(*interface{})(ptr) = f
+				return
+			}
+		default:
+			*(*interface{})(ptr) = iter.Read()
+		}
+	})
+}
 
 func RegisterDriver(key string, constructor interface{}) {
 	refx.Register("driver.Driver", key, constructor)

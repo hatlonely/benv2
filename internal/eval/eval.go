@@ -2,7 +2,10 @@ package eval
 
 import (
 	"context"
+	"encoding/json"
+	"strconv"
 	"strings"
+	"unsafe"
 
 	"github.com/PaesslerAG/gval"
 	"github.com/barkimedes/go-deepcopy"
@@ -10,6 +13,29 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 )
+
+func init() {
+	// 数值转换成 int64，默认都是 float64
+	jsoniter.RegisterTypeDecoderFunc("interface {}", func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+		switch iter.WhatIsNext() {
+		case jsoniter.NumberValue:
+			var number json.Number
+			iter.ReadVal(&number)
+			i, err := strconv.ParseInt(string(number), 10, 64)
+			if err == nil {
+				*(*interface{})(ptr) = i
+				return
+			}
+			f, err := strconv.ParseFloat(string(number), 64)
+			if err == nil {
+				*(*interface{})(ptr) = f
+				return
+			}
+		default:
+			*(*interface{})(ptr) = iter.Read()
+		}
+	})
+}
 
 func NewEvaluable(v interface{}) (*Evaluable, error) {
 	ev := &Evaluable{

@@ -97,7 +97,7 @@ func TestWrapDriver(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(res, ShouldResemble, map[string]interface{}{
 				"ResF1": "val1",
-				"ResF2": float64(2),
+				"ResF2": int64(2),
 			})
 		})
 
@@ -108,7 +108,7 @@ func TestWrapDriver(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(res, ShouldResemble, map[string]interface{}{
 				"ResF1": "val1",
-				"ResF2": float64(2),
+				"ResF2": int64(2),
 			})
 		})
 
@@ -116,13 +116,13 @@ func TestWrapDriver(t *testing.T) {
 			res, err := d.Do(map[string]interface{}{
 				"Method": "Func1Err",
 				"ReqF1":  "val1",
-				"ReqF2":  2,
+				"ReqF2":  1669914649166991464,
 			})
 			So(err, ShouldBeNil)
 
 			So(res, ShouldResemble, map[string]interface{}{
 				"ResF1": "val1",
-				"ResF2": float64(2),
+				"ResF2": int64(1669914649166991464),
 			})
 		})
 
@@ -136,7 +136,7 @@ func TestWrapDriver(t *testing.T) {
 
 			So(res, ShouldResemble, map[string]interface{}{
 				"ResF1": "val2val2",
-				"ResF2": float64(44),
+				"ResF2": int64(44),
 			})
 		})
 	})

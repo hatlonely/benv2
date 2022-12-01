@@ -27,7 +27,7 @@ func TestShellDriver(t *testing.T) {
 		So(res, ShouldResemble, map[string]interface{}{
 			"Stdout":   "hello world",
 			"Stderr":   "",
-			"ExitCode": float64(0),
+			"ExitCode": int64(0),
 		})
 	})
 }
