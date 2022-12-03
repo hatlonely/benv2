@@ -36,19 +36,19 @@ func NewShellDriverWithOptions(options *ShellDriverOptions) (*ShellDriver, error
 	}, nil
 }
 
-type ShellDriverReq struct {
+type ShellDriverDoReq struct {
 	Command string
 	Envs    map[string]string
 	Decoder string
 }
 
-type ShellDriverRes struct {
+type ShellDriverDoRes struct {
 	Stdout   string
 	Stderr   string
 	ExitCode int
 }
 
-func (d *ShellDriver) Do(req *ShellDriverReq) (*ShellDriverRes, error) {
+func (d *ShellDriver) Do(req *ShellDriverDoReq) (*ShellDriverDoRes, error) {
 	var envs []string
 	for k, v := range req.Envs {
 		envs = append(envs, fmt.Sprintf(`%s=%s`, k, strings.TrimSpace(v)))
@@ -77,14 +77,14 @@ func (d *ShellDriver) Do(req *ShellDriverReq) (*ShellDriverRes, error) {
 			}
 		}
 
-		return &ShellDriverRes{
+		return &ShellDriverDoRes{
 			Stdout:   stdout.String(),
 			Stderr:   stderr.String(),
 			ExitCode: exitCode,
 		}, errors.Wrap(err, "cmd.Wait failed")
 	}
 
-	return &ShellDriverRes{
+	return &ShellDriverDoRes{
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 		ExitCode: 0,
