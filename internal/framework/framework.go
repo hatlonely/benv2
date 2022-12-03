@@ -2,14 +2,15 @@ package framework
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
-
-	"github.com/hatlonely/go-kit/refx"
 
 	"github.com/hatlonely/benv2/internal/driver"
 	"github.com/hatlonely/benv2/internal/eval"
 	"github.com/hatlonely/benv2/internal/source"
+	"github.com/hatlonely/go-kit/refx"
+	"github.com/hatlonely/go-kit/strx"
 	"github.com/pkg/errors"
 )
 
@@ -102,20 +103,25 @@ type StepInfo struct {
 
 type UnitStat struct {
 	Name string
-	Res  []interface{}
-	Err  []error
+	Step []*StepStat
+}
+
+type StepStat struct {
+	Req interface{}
+	Res interface{}
+	Err error
 }
 
 func (fw *Framework) Stat(stat *UnitStat) {
-
+	fmt.Println(strx.JsonMarshalSortKeys(stat))
 }
 
-func (fw *Framework) RunPlan(info *PlanInfo) error {
+func (fw *Framework) Run() error {
 	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for _, unit := range info.Unit {
+	for _, unit := range fw.plan.Unit {
 		for i := 0; i < unit.Parallel; i++ {
 			wg.Add(1)
 			go func(unit *UnitInfo) {
@@ -124,7 +130,7 @@ func (fw *Framework) RunPlan(info *PlanInfo) error {
 					select {
 					case <-ctx.Done():
 						break out
-					case <-time.After(info.Duration):
+					case <-time.After(fw.plan.Duration):
 						break out
 					default:
 						stat, err := fw.RunUnit(unit)
@@ -140,6 +146,8 @@ func (fw *Framework) RunPlan(info *PlanInfo) error {
 		}
 	}
 
+	wg.Wait()
+
 	return nil
 }
 
@@ -152,8 +160,8 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*UnitStat, error) {
 	for key, src := range fw.source {
 		sourceMap[key] = src.Fetch()
 	}
+	var req interface{}
 	for _, step := range info.Step {
-		var req interface{}
 		req, err = step.Req.Evaluate(map[string]interface{}{
 			"source": sourceMap,
 			"stat":   stat,
@@ -171,13 +179,19 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*UnitStat, error) {
 			break
 		}
 
-		stat.Res = append(stat.Res, res)
-		stat.Err = append(stat.Err, nil)
+		stat.Step = append(stat.Step, &StepStat{
+			Req: req,
+			Res: res,
+			Err: nil,
+		})
 	}
 
 	if err != nil {
-		stat.Res = append(stat.Res, nil)
-		stat.Err = append(stat.Err, err)
+		stat.Step = append(stat.Step, &StepStat{
+			Req: req,
+			Res: nil,
+			Err: err,
+		})
 	}
 
 	return stat, nil
