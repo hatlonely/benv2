@@ -43,6 +43,7 @@ plan:
             Command: echo -n ${KEY3} ${KEY4}
             Envs:
               "#KEY3": stat.Step[0].Res.Stdout
+stat: ben.json
 `
 
 func TestFramework_RunPlan(t *testing.T) {

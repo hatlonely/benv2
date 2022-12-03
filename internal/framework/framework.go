@@ -3,6 +3,7 @@ package framework
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -36,6 +37,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 	var err error
 	fw := &Framework{
 		name:   options.Name,
+		stat:   options.Stat,
 		ctx:    map[string]driver.Driver{},
 		source: map[string]source.Source{},
 	}
@@ -118,12 +120,16 @@ type StepStat struct {
 	ResTime time.Duration
 }
 
-func (fw *Framework) Stat(stat *UnitStat) {
-	fmt.Println(strx.JsonMarshalSortKeys(stat))
-}
-
 func (fw *Framework) Run() error {
 	var wg sync.WaitGroup
+
+	fp, err := os.Create(fw.stat)
+	if err != nil {
+		return errors.WithMessage(err, "os.Create failed")
+	}
+	defer fp.Close()
+	//writer := bufio.NewWriterSize(fp, 40960)
+	//defer writer.Flush()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -144,7 +150,12 @@ func (fw *Framework) Run() error {
 							fmt.Println(err)
 							cancel()
 						}
-						fw.Stat(stat)
+						//_, err = writer.WriteString(strx.JsonMarshal(stat) + "\n")
+						_, err = fp.WriteString(strx.JsonMarshal(stat) + "\n")
+						if err != nil {
+							fmt.Println(err)
+							cancel()
+						}
 					}
 				}
 
