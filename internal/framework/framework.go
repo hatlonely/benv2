@@ -135,6 +135,7 @@ func (fw *Framework) Run() error {
 					default:
 						stat, err := fw.RunUnit(unit)
 						if err != nil {
+							fmt.Println(err)
 							cancel()
 						}
 						fw.Stat(stat)

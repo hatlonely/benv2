@@ -38,6 +38,11 @@ plan:
             Envs:
               "#KEY1": source.src.key1
               "#KEY2": source.src.key2
+        - ctx: sh
+          req:
+            Command: echo -n ${KEY3} ${KEY4}
+            Envs:
+              "#KEY3": stat.Step[0].Res.Stdout
 `
 
 func TestFramework_RunPlan(t *testing.T) {
@@ -51,7 +56,6 @@ func TestFramework_RunPlan(t *testing.T) {
 		fmt.Println(strx.JsonMarshalIndent(options))
 		fw, err := NewFrameworkWithOptions(&options)
 		So(err, ShouldBeNil)
-
 		So(fw.Run(), ShouldBeNil)
 	})
 }
