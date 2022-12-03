@@ -16,6 +16,7 @@ import (
 
 type Options struct {
 	Name   string
+	Stat   string
 	Ctx    map[string]refx.TypeOptions
 	Source map[string]refx.TypeOptions
 	Plan   struct {
@@ -80,6 +81,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 
 type Framework struct {
 	name   string
+	stat   string
 	ctx    map[string]driver.Driver
 	source map[string]source.Source
 	plan   *PlanInfo
@@ -102,14 +104,18 @@ type StepInfo struct {
 }
 
 type UnitStat struct {
-	Name string
-	Step []*StepStat
+	Name    string
+	Step    []*StepStat
+	ErrCode string
+	ResTime time.Duration
 }
 
 type StepStat struct {
-	Req interface{}
-	Res interface{}
-	Err error
+	Req     interface{}
+	Res     interface{}
+	Err     error
+	ErrCode string
+	ResTime time.Duration
 }
 
 func (fw *Framework) Stat(stat *UnitStat) {
@@ -161,7 +167,11 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*UnitStat, error) {
 	for key, src := range fw.source {
 		sourceMap[key] = src.Fetch()
 	}
+
 	var req interface{}
+	var stepResTime time.Duration
+
+	unitStart := time.Now()
 	for _, step := range info.Step {
 		req, err = step.Req.Evaluate(map[string]interface{}{
 			"source": sourceMap,
@@ -174,26 +184,33 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*UnitStat, error) {
 		if !ok {
 			return nil, errors.Errorf("ctx not found. ctx: [%s]", step.Ctx)
 		}
+
+		stepStart := time.Now()
 		res, err := d.Do(req)
+		stepResTime = time.Since(stepStart)
 		if err != nil {
 			err = errors.WithMessage(err, "driver.Do failed")
 			break
 		}
 
 		stat.Step = append(stat.Step, &StepStat{
-			Req: req,
-			Res: res,
-			Err: nil,
+			Req:     req,
+			Res:     res,
+			Err:     nil,
+			ResTime: stepResTime,
 		})
 	}
 
 	if err != nil {
 		stat.Step = append(stat.Step, &StepStat{
-			Req: req,
-			Res: nil,
-			Err: err,
+			Req:     req,
+			Res:     nil,
+			Err:     err,
+			ResTime: stepResTime,
 		})
 	}
+
+	stat.ResTime = time.Since(unitStart)
 
 	return stat, nil
 }
