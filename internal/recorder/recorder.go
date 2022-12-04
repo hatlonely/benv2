@@ -30,7 +30,7 @@ type Recorder interface {
 }
 
 type UnitStat struct {
-	Time    string
+	Time    string // 记录时间，由 Recorder 设置
 	Name    string
 	Step    []*StepStat
 	ErrCode string

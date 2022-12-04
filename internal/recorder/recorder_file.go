@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/hatlonely/go-kit/strx"
 	"github.com/pkg/errors"
@@ -45,6 +46,7 @@ func (r *FileRecorder) Close() error {
 
 func (r *FileRecorder) Record(stat *UnitStat) error {
 	r.mutex.Lock()
+	stat.Time = time.Now().Format(time.RFC3339Nano)
 	_, err := r.writer.WriteString(strx.JsonMarshal(stat) + "\n")
 	r.mutex.Unlock()
 	if err != nil {

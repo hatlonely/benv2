@@ -108,23 +108,6 @@ type StepInfo struct {
 	Req *eval.Evaluable
 }
 
-//type UnitStat struct {
-//	Time    string
-//	Name    string
-//	Step    []*StepStat
-//	ErrCode string
-//	ResTime time.Duration
-//}
-//
-//type StepStat struct {
-//	Time    string
-//	Req     interface{}
-//	Res     interface{}
-//	Err     error
-//	ErrCode string
-//	ResTime time.Duration
-//}
-
 func (fw *Framework) Run() error {
 	var wg sync.WaitGroup
 	defer fw.recorder.Close()
@@ -167,7 +150,7 @@ func (fw *Framework) Run() error {
 }
 
 func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
-	stat := &recorder.UnitStat{Time: time.Now().Format(time.RFC3339Nano), Name: info.Name}
+	stat := &recorder.UnitStat{Name: info.Name}
 	var err error
 
 	// fetch source
@@ -180,7 +163,6 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 	var stepResTime time.Duration
 
 	unitStart := time.Now()
-	var stepStart time.Time
 	for _, step := range info.Step {
 		req, err = step.Req.Evaluate(map[string]interface{}{
 			"source": sourceMap,
@@ -194,7 +176,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 			return nil, errors.Errorf("ctx not found. ctx: [%s]", step.Ctx)
 		}
 
-		stepStart = time.Now()
+		stepStart := time.Now()
 		res, err := d.Do(req)
 		stepResTime = time.Since(stepStart)
 		if err != nil {
@@ -203,7 +185,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 		}
 
 		stat.Step = append(stat.Step, &recorder.StepStat{
-			Time:    stepStart.Format(time.RFC3339Nano),
+			Time:    time.Now().Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     res,
 			Err:     nil,
@@ -213,7 +195,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 
 	if err != nil {
 		stat.Step = append(stat.Step, &recorder.StepStat{
-			Time:    stepStart.Format(time.RFC3339Nano),
+			Time:    time.Now().Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     nil,
 			Err:     err,
