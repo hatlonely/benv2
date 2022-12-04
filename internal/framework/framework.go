@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -128,8 +129,9 @@ func (fw *Framework) Run() error {
 		return errors.WithMessage(err, "os.Create failed")
 	}
 	defer fp.Close()
-	//writer := bufio.NewWriterSize(fp, 40960)
-	//defer writer.Flush()
+	writer := bufio.NewWriterSize(fp, 32768)
+	defer writer.Flush()
+	var mutex sync.Mutex
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -150,8 +152,9 @@ func (fw *Framework) Run() error {
 							fmt.Println(err)
 							cancel()
 						}
-						//_, err = writer.WriteString(strx.JsonMarshal(stat) + "\n")
-						_, err = fp.WriteString(strx.JsonMarshal(stat) + "\n")
+						mutex.Lock()
+						_, err = writer.WriteString(strx.JsonMarshal(stat) + "\n")
+						mutex.Unlock()
 						if err != nil {
 							fmt.Println(err)
 							cancel()
