@@ -1,27 +1,25 @@
 package framework
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/hatlonely/benv2/internal/driver"
 	"github.com/hatlonely/benv2/internal/eval"
+	"github.com/hatlonely/benv2/internal/recorder"
 	"github.com/hatlonely/benv2/internal/source"
 	"github.com/hatlonely/go-kit/refx"
-	"github.com/hatlonely/go-kit/strx"
 	"github.com/pkg/errors"
 )
 
 type Options struct {
-	Name   string
-	Stat   string
-	Ctx    map[string]refx.TypeOptions
-	Source map[string]refx.TypeOptions
-	Plan   struct {
+	Name     string
+	Recorder refx.TypeOptions
+	Ctx      map[string]refx.TypeOptions
+	Source   map[string]refx.TypeOptions
+	Plan     struct {
 		Duration time.Duration
 		Unit     []struct {
 			Parallel int `dft:"1"`
@@ -38,9 +36,13 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 	var err error
 	fw := &Framework{
 		name:   options.Name,
-		stat:   options.Stat,
 		ctx:    map[string]driver.Driver{},
 		source: map[string]source.Source{},
+	}
+
+	fw.recorder, err = recorder.NewRecorderWithOptions(&options.Recorder, opts...)
+	if err != nil {
+		return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
 	}
 
 	for key, refxOptions := range options.Ctx {
@@ -83,11 +85,11 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 }
 
 type Framework struct {
-	name   string
-	stat   string
-	ctx    map[string]driver.Driver
-	source map[string]source.Source
-	plan   *PlanInfo
+	name     string
+	recorder recorder.Recorder
+	ctx      map[string]driver.Driver
+	source   map[string]source.Source
+	plan     *PlanInfo
 }
 
 type PlanInfo struct {
@@ -106,34 +108,26 @@ type StepInfo struct {
 	Req *eval.Evaluable
 }
 
-type UnitStat struct {
-	Time    string
-	Name    string
-	Step    []*StepStat
-	ErrCode string
-	ResTime time.Duration
-}
-
-type StepStat struct {
-	Time    string
-	Req     interface{}
-	Res     interface{}
-	Err     error
-	ErrCode string
-	ResTime time.Duration
-}
+//type UnitStat struct {
+//	Time    string
+//	Name    string
+//	Step    []*StepStat
+//	ErrCode string
+//	ResTime time.Duration
+//}
+//
+//type StepStat struct {
+//	Time    string
+//	Req     interface{}
+//	Res     interface{}
+//	Err     error
+//	ErrCode string
+//	ResTime time.Duration
+//}
 
 func (fw *Framework) Run() error {
 	var wg sync.WaitGroup
-
-	fp, err := os.Create(fw.stat)
-	if err != nil {
-		return errors.WithMessage(err, "os.Create failed")
-	}
-	defer fp.Close()
-	writer := bufio.NewWriterSize(fp, 32768)
-	defer writer.Flush()
-	var mutex sync.Mutex
+	defer fw.recorder.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -154,9 +148,7 @@ func (fw *Framework) Run() error {
 							fmt.Println(err)
 							cancel()
 						}
-						mutex.Lock()
-						_, err = writer.WriteString(strx.JsonMarshal(stat) + "\n")
-						mutex.Unlock()
+						err = fw.recorder.Record(stat)
 						if err != nil {
 							fmt.Println(err)
 							cancel()
@@ -174,8 +166,8 @@ func (fw *Framework) Run() error {
 	return nil
 }
 
-func (fw *Framework) RunUnit(info *UnitInfo) (*UnitStat, error) {
-	stat := &UnitStat{Time: time.Now().Format(time.RFC3339Nano), Name: info.Name}
+func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
+	stat := &recorder.UnitStat{Time: time.Now().Format(time.RFC3339Nano), Name: info.Name}
 	var err error
 
 	// fetch source
@@ -210,7 +202,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*UnitStat, error) {
 			break
 		}
 
-		stat.Step = append(stat.Step, &StepStat{
+		stat.Step = append(stat.Step, &recorder.StepStat{
 			Time:    stepStart.Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     res,
@@ -220,7 +212,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*UnitStat, error) {
 	}
 
 	if err != nil {
-		stat.Step = append(stat.Step, &StepStat{
+		stat.Step = append(stat.Step, &recorder.StepStat{
 			Time:    stepStart.Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     nil,

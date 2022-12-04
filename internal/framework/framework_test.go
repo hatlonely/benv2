@@ -29,7 +29,7 @@ source:
       - key1: val3
         key2: val4
 plan:
-  duration: 1s
+  duration: 1s 
   unit:
     - name: unit1
       parallel: 3
@@ -45,7 +45,10 @@ plan:
             Command: echo -n ${KEY3} ${KEY4}
             Envs:
               "#KEY3": stat.Step[0].Res.Stdout
-stat: ben.json
+recorder:
+  type: File
+  options:
+    filePath: ben.json
 `
 
 func TestFramework_RunPlan(t *testing.T) {
@@ -57,7 +60,7 @@ func TestFramework_RunPlan(t *testing.T) {
 		var options Options
 		So(cfg.Unmarshal(&options, refx.WithCamelName()), ShouldBeNil)
 		fmt.Println(strx.JsonMarshalIndent(options))
-		fw, err := NewFrameworkWithOptions(&options)
+		fw, err := NewFrameworkWithOptions(&options, refx.WithCamelName())
 		So(err, ShouldBeNil)
 		So(fw.Run(), ShouldBeNil)
 	})
