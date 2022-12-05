@@ -41,7 +41,7 @@ func NewFileSourceWithOptions(options *FileSourceOptions) (*FileSource, error) {
 
 		source = append(source, v)
 
-		if err != nil {
+		if err == io.EOF {
 			break
 		}
 	}

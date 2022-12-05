@@ -11,8 +11,9 @@ import (
 )
 
 type FileRecorderOptions struct {
-	FilePath string
-	BufSize  int `dft:"32768"`
+	FilePath        string
+	BufSize         int `dft:"32768"`
+	UseRecorderTime bool
 }
 
 func NewFileRecorderWithOptions(options *FileRecorderOptions) (*FileRecorder, error) {
@@ -48,7 +49,9 @@ func (r *FileRecorder) Close() error {
 
 func (r *FileRecorder) Record(stat *UnitStat) error {
 	r.mutex.Lock()
-	stat.Time = time.Now().Format(time.RFC3339Nano)
+	if r.options.UseRecorderTime {
+		stat.Time = time.Now().Format(time.RFC3339Nano)
+	}
 	_, err := r.writer.WriteString(strx.JsonMarshal(stat) + "\n")
 	r.mutex.Unlock()
 	if err != nil {

@@ -204,6 +204,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 	}
 
 	stat.ResTime = time.Since(unitStart)
+	stat.Time = time.Now().Format(time.RFC3339Nano)
 
 	return stat, nil
 }

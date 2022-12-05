@@ -30,6 +30,5 @@ type Analyst interface {
 }
 
 type StatStream interface {
-	HasNext() bool
-	Next() *UnitStat
+	Next() (*UnitStat, error)
 }

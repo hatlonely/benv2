@@ -1,6 +1,7 @@
 package recorder
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"os"
@@ -24,10 +25,10 @@ type FileAnalyst struct {
 	options *FileAnalystOptions
 }
 
-func (r *FileAnalyst) TimeRange() (time.Time, time.Time, error) {
+func (fa *FileAnalyst) TimeRange() (time.Time, time.Time, error) {
 	const kBufSize = 4096
 
-	fp, err := os.Open(r.options.FilePath)
+	fp, err := os.Open(fa.options.FilePath)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.WithMessage(err, "os.Open failed")
 	}
@@ -128,5 +129,36 @@ func (r *FileAnalyst) TimeRange() (time.Time, time.Time, error) {
 	return st, et, nil
 }
 
-type FileRecorderStatStream struct {
+type FileAnalystStatStream struct {
+	reader *bufio.Reader
+}
+
+func (fa *FileAnalyst) Stat() (StatStream, error) {
+	fp, err := os.Open(fa.options.FilePath)
+	if err != nil {
+		return nil, errors.Wrap(err, "os.Open failed")
+	}
+	reader := bufio.NewReader(fp)
+
+	return &FileAnalystStatStream{
+		reader: reader,
+	}, nil
+}
+
+func (s *FileAnalystStatStream) Next() (*UnitStat, error) {
+	buf, err := s.reader.ReadBytes('\n')
+	if err != nil && err != io.EOF {
+		return nil, errors.Wrapf(err, "reader.ReadBytes failed")
+	}
+
+	if err == io.EOF {
+		return nil, nil
+	}
+
+	var v UnitStat
+	if err := jsoniter.Unmarshal(buf, &v); err != nil {
+		return nil, errors.Wrapf(err, "jsoniter.Unmarshal failed")
+	}
+
+	return &v, nil
 }
