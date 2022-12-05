@@ -130,6 +130,7 @@ func (fa *FileAnalyst) TimeRange() (time.Time, time.Time, error) {
 }
 
 type FileAnalystStatStream struct {
+	fp     *os.File
 	reader *bufio.Reader
 }
 
@@ -141,6 +142,7 @@ func (fa *FileAnalyst) Stat() (StatStream, error) {
 	reader := bufio.NewReader(fp)
 
 	return &FileAnalystStatStream{
+		fp:     fp,
 		reader: reader,
 	}, nil
 }
@@ -152,6 +154,7 @@ func (s *FileAnalystStatStream) Next() (*UnitStat, error) {
 	}
 
 	if err == io.EOF {
+		_ = s.fp.Close()
 		return nil, nil
 	}
 

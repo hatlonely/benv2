@@ -17,6 +17,7 @@ func TestFileRecorder(t *testing.T) {
 		Convey("Record", func() {
 			So(fr.Record(&UnitStat{
 				Name: "test-name",
+				Time: "2022-12-05T16:36:53.653687+08:00",
 				Step: []*StepStat{
 					{
 						Time: "2022-12-05T16:36:53.653687+08:00",
@@ -39,6 +40,7 @@ func TestFileRecorder(t *testing.T) {
 
 			So(fr.Record(&UnitStat{
 				Name: "test-name",
+				Time: "2022-12-05T16:36:54.653687+08:00",
 				Step: []*StepStat{
 					{
 						Time: "2022-12-05T16:36:54.653687+08:00",
@@ -61,6 +63,7 @@ func TestFileRecorder(t *testing.T) {
 
 			So(fr.Record(&UnitStat{
 				Name: "test-name",
+				Time: "2022-12-05T16:36:55.653687+08:00",
 				Step: []*StepStat{
 					{
 						Time: "2022-12-05T16:36:55.653687+08:00",
