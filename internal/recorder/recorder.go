@@ -27,14 +27,6 @@ func NewRecorderWithOptions(options *refx.TypeOptions, opts ...refx.Option) (Rec
 type Recorder interface {
 	Record(stat *UnitStat) error
 	Close() error
-
-	TimeRange() (time.Time, time.Time, error)
-	Stat() StatStream
-}
-
-type StatStream interface {
-	HasNext() bool
-	Next() *UnitStat
 }
 
 type UnitStat struct {

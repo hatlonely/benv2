@@ -1,11 +1,9 @@
 package recorder
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/hatlonely/go-kit/refx"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -18,15 +16,15 @@ func TestFileRecorder(t *testing.T) {
 
 		Convey("Record", func() {
 			So(fr.Record(&UnitStat{
-				Name:    "test-name",
-				Step:    []*StepStat{
+				Name: "test-name",
+				Step: []*StepStat{
 					{
-						Time:    "2022-12-05T16:36:53.653687+08:00",
-						Req:     map[string]interface{}{
+						Time: "2022-12-05T16:36:53.653687+08:00",
+						Req: map[string]interface{}{
 							"Key1": "val1",
 							"Key2": "val2",
 						},
-						Res:     map[string]interface{}{
+						Res: map[string]interface{}{
 							"Key3": "val3",
 							"Key4": "val4",
 						},
@@ -40,15 +38,15 @@ func TestFileRecorder(t *testing.T) {
 			}), ShouldBeNil)
 
 			So(fr.Record(&UnitStat{
-				Name:    "test-name",
-				Step:    []*StepStat{
+				Name: "test-name",
+				Step: []*StepStat{
 					{
-						Time:    "2022-12-05T16:36:54.653687+08:00",
-						Req:     map[string]interface{}{
+						Time: "2022-12-05T16:36:54.653687+08:00",
+						Req: map[string]interface{}{
 							"Key1": "val1",
 							"Key2": "val2",
 						},
-						Res:     map[string]interface{}{
+						Res: map[string]interface{}{
 							"Key3": "val3",
 							"Key4": "val4",
 						},
@@ -62,15 +60,15 @@ func TestFileRecorder(t *testing.T) {
 			}), ShouldBeNil)
 
 			So(fr.Record(&UnitStat{
-				Name:    "test-name",
-				Step:    []*StepStat{
+				Name: "test-name",
+				Step: []*StepStat{
 					{
-						Time:    "2022-12-05T16:36:55.653687+08:00",
-						Req:     map[string]interface{}{
+						Time: "2022-12-05T16:36:55.653687+08:00",
+						Req: map[string]interface{}{
 							"Key1": "val1",
 							"Key2": "val2",
 						},
-						Res:     map[string]interface{}{
+						Res: map[string]interface{}{
 							"Key3": "val3",
 							"Key4": "val4",
 						},
@@ -84,14 +82,6 @@ func TestFileRecorder(t *testing.T) {
 			}), ShouldBeNil)
 
 			So(fr.Close(), ShouldBeNil)
-
-			Convey("TimeRange", func() {
-				st, et, err := fr.TimeRange()
-				refx.Must(err)
-				fmt.Println(st, et, err)
-			})
 		})
-
-
 	})
 }
