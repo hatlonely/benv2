@@ -27,7 +27,7 @@ func TestFileAnalyst(t *testing.T) {
 		So(st.UnixNano(), ShouldEqual, 1670229413653687000)
 		So(et.UnixNano(), ShouldEqual, 1670229415653687000)
 
-		stream, err := analyst.Stat()
+		stream, err := analyst.UnitStatStream()
 		So(err, ShouldBeNil)
 		var stats []*UnitStat
 		for {

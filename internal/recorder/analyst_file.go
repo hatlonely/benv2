@@ -134,7 +134,7 @@ type FileAnalystStatStream struct {
 	reader *bufio.Reader
 }
 
-func (fa *FileAnalyst) Stat() (StatStream, error) {
+func (fa *FileAnalyst) UnitStatStream() (StatStream, error) {
 	fp, err := os.Open(fa.options.FilePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "os.Open failed")

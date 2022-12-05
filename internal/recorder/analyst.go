@@ -26,9 +26,26 @@ func NewAnalystWithOptions(options *refx.TypeOptions, opts ...refx.Option) (Anal
 
 type Analyst interface {
 	TimeRange() (time.Time, time.Time, error)
-	Stat() StatStream
+	UnitStatStream() StatStream
+	Statistics() []Measurement
 }
 
 type StatStream interface {
 	Next() (*UnitStat, error)
+}
+
+type Measurement struct {
+	Time               time.Time
+	ResTimeMs          int
+	Total              int
+	Pass               int
+	Fail               int
+	QPS                int
+	AvgResTimeMs       int
+	SuccessRatePercent float64
+}
+
+type analyst interface {
+	TimeRange() (time.Time, time.Time, error)
+	UnitStatStream() StatStream
 }
