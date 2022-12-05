@@ -29,10 +29,11 @@ type Recorder interface {
 	Close() error
 
 	TimeRange() (time.Time, time.Time, error)
-	//Stat() StatStream
+	Stat() StatStream
 }
 
 type StatStream interface {
+	HasNext() bool
 	Next() *UnitStat
 }
 

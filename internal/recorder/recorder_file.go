@@ -163,3 +163,6 @@ func (r *FileRecorder) TimeRange() (time.Time, time.Time, error) {
 
 	return st, et, nil
 }
+
+type FileRecorderStatStream struct {
+}
