@@ -151,7 +151,7 @@ func (fw *Framework) Run() error {
 }
 
 func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
-	stat := &recorder.UnitStat{Name: info.Name}
+	unitStat := &recorder.UnitStat{Name: info.Name}
 	var err error
 
 	// fetch source
@@ -167,7 +167,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 	for _, step := range info.Step {
 		req, err = step.Req.Evaluate(map[string]interface{}{
 			"source": sourceMap,
-			"stat":   stat,
+			"stat":   unitStat,
 		})
 		if err != nil {
 			return nil, errors.WithMessage(err, "step.Req.Evaluate failed")
@@ -185,7 +185,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 			break
 		}
 
-		stat.Step = append(stat.Step, &recorder.StepStat{
+		unitStat.Step = append(unitStat.Step, &recorder.StepStat{
 			Time:    time.Now().Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     res,
@@ -195,17 +195,26 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 	}
 
 	if err != nil {
-		stat.Step = append(stat.Step, &recorder.StepStat{
+		stepStat := &recorder.StepStat{
 			Time:    time.Now().Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     nil,
 			Err:     err,
 			ResTime: stepResTime,
-		})
+			ErrCode: "Internal",
+		}
+
+		switch e := errors.Cause(err).(type) {
+		case *driver.Error:
+			stepStat.ErrCode = e.Code
+		}
+
+		unitStat.Step = append(unitStat.Step, stepStat)
+		unitStat.ErrCode = stepStat.ErrCode
 	}
 
-	stat.ResTime = time.Since(unitStart)
-	stat.Time = time.Now().Format(time.RFC3339Nano)
+	unitStat.ResTime = time.Since(unitStart)
+	unitStat.Time = time.Now().Format(time.RFC3339Nano)
 
-	return stat, nil
+	return unitStat, nil
 }
