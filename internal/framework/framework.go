@@ -16,11 +16,10 @@ import (
 )
 
 type Options struct {
-	Name     string
-	Recorder refx.TypeOptions
-	Ctx      map[string]refx.TypeOptions
-	Source   map[string]refx.TypeOptions
-	Plan     struct {
+	Name   string
+	Ctx    map[string]refx.TypeOptions
+	Source map[string]refx.TypeOptions
+	Plan   struct {
 		Duration time.Duration
 		Unit     []struct {
 			Parallel int `dft:"1"`
@@ -31,30 +30,32 @@ type Options struct {
 			}
 		}
 	}
+	Recorder refx.TypeOptions
+	Analyst  refx.TypeOptions
 }
 
 func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework, error) {
-	var err error
-	fw := &Framework{
-		name:   options.Name,
-		ctx:    map[string]driver.Driver{},
-		source: map[string]source.Source{},
-	}
-
-	fw.recorder, err = recorder.NewRecorderWithOptions(&options.Recorder, opts...)
+	recorder_, err := recorder.NewRecorderWithOptions(&options.Recorder, opts...)
 	if err != nil {
 		return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
 	}
 
+	analyst, err := recorder.NewAnalystWithOptions(&options.Analyst, opts...)
+	if err != nil {
+		return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
+	}
+
+	ctx := map[string]driver.Driver{}
 	for key, refxOptions := range options.Ctx {
-		fw.ctx[key], err = driver.NewDriverWithOptions(&refxOptions, opts...)
+		ctx[key], err = driver.NewDriverWithOptions(&refxOptions, opts...)
 		if err != nil {
 			return nil, errors.WithMessage(err, "driver.NewDriverWithOptions failed")
 		}
 	}
 
+	source_ := map[string]source.Source{}
 	for key, refxOptions := range options.Source {
-		fw.source[key], err = source.NewSourceWithOptions(&refxOptions, opts...)
+		source_[key], err = source.NewSourceWithOptions(&refxOptions, opts...)
 		if err != nil {
 			return nil, errors.WithMessage(err, "source.NewSourceWithOptions failed")
 		}
@@ -80,17 +81,23 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 		})
 	}
 
-	fw.plan = &plan
-
-	return fw, nil
+	return &Framework{
+		name:     options.Name,
+		ctx:      ctx,
+		source:   source_,
+		plan:     &plan,
+		recorder: recorder_,
+		analyst:  analyst,
+	}, nil
 }
 
 type Framework struct {
 	name     string
-	recorder recorder.Recorder
 	ctx      map[string]driver.Driver
 	source   map[string]source.Source
 	plan     *PlanInfo
+	recorder recorder.Recorder
+	analyst  recorder.Analyst
 }
 
 type PlanInfo struct {

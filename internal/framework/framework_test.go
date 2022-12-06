@@ -49,6 +49,11 @@ recorder:
   type: File
   options:
     filePath: ben.json
+
+analyst:
+  type: File
+  options:
+    filePath: ben.json
 `
 
 func TestFramework_RunPlan(t *testing.T) {

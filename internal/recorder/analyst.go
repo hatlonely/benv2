@@ -26,7 +26,7 @@ func NewAnalystWithOptions(options *refx.TypeOptions, opts ...refx.Option) (Anal
 
 type Analyst interface {
 	TimeRange() (time.Time, time.Time, error)
-	UnitStatStream() StatStream
+	UnitStatStream() (StatStream, error)
 }
 
 type StatStream interface {

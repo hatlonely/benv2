@@ -47,7 +47,10 @@ func (s *Statistics) Statistics(analyst Analyst) ([]*Measurement, error) {
 		})
 	}
 
-	stream := analyst.UnitStatStream()
+	stream, err := analyst.UnitStatStream()
+	if err != nil {
+		return nil, errors.WithMessage(err, "analyst.UnitStatStream failed")
+	}
 	for {
 		stat, err := stream.Next()
 		if err != nil {
