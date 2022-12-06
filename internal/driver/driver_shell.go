@@ -37,15 +37,16 @@ func NewShellDriverWithOptions(options *ShellDriverOptions) (*ShellDriver, error
 }
 
 type ShellDriverDoReq struct {
-	Command string
-	Envs    map[string]string
-	Decoder string
+	Command    string
+	Envs       map[string]string
+	JsonDecode string
 }
 
 type ShellDriverDoRes struct {
 	Stdout   string
 	Stderr   string
 	ExitCode int
+	Json     interface{}
 }
 
 func (d *ShellDriver) Do(req *ShellDriverDoReq) (*ShellDriverDoRes, error) {
