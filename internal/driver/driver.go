@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"unsafe"
 
-	jsoniter "github.com/json-iterator/go"
-
 	"github.com/hatlonely/go-kit/refx"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 )
 
@@ -201,13 +200,24 @@ func resultToInterface(mt reflect.Type, results []reflect.Value) (interface{}, e
 		if mt.Out(0) == reflect.TypeOf((*error)(nil)).Elem() {
 			return nil, results[0].Interface().(error)
 		}
-		return structToInterface(results[0].Interface())
+		v, err := structToInterface(results[0].Interface())
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
 	}
 	if mt.NumOut() == 2 {
 		if mt.Out(1) != reflect.TypeOf((*error)(nil)).Elem() {
 			return nil, errors.Errorf("the second result should be error")
 		}
-		return structToInterface(results[0].Interface())
+		if results[1].IsNil() {
+			v, err := structToInterface(results[0].Interface())
+			if err != nil {
+				return nil, err
+			}
+			return v, nil
+		}
+		return nil, results[1].Interface().(error)
 	}
 	return nil, errors.New("return too many values")
 }

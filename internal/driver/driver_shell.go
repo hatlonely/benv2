@@ -2,6 +2,7 @@ package driver
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -39,7 +40,7 @@ func NewShellDriverWithOptions(options *ShellDriverOptions) (*ShellDriver, error
 type ShellDriverDoReq struct {
 	Command    string
 	Envs       map[string]string
-	JsonDecode string
+	JsonDecode bool
 }
 
 type ShellDriverDoRes struct {
@@ -71,18 +72,32 @@ func (d *ShellDriver) Do(req *ShellDriverDoReq) (*ShellDriverDoRes, error) {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		exitCode := -1
-		if e, ok := err.(*exec.ExitError); ok {
+		switch e := err.(type) {
+		case *exec.ExitError:
+			exitCode := -1
 			if status, ok := e.Sys().(syscall.WaitStatus); ok {
 				exitCode = status.ExitStatus()
 			}
+			return &ShellDriverDoRes{
+				Stdout:   stdout.String(),
+				Stderr:   stderr.String(),
+				ExitCode: exitCode,
+			}, nil
 		}
 
+		return nil, NewError(errors.Wrap(err, "cmd.Wait failed"), "CommandWaitFailed", err.Error())
+	}
+
+	if req.JsonDecode {
+		var v interface{}
+		if err := json.Unmarshal(stdout.Bytes(), &v); err != nil {
+			return nil, NewError(errors.Wrap(err, "jsoniter.Unmarshal failed"), "JsonDecodeFailed", err.Error())
+		}
 		return &ShellDriverDoRes{
-			Stdout:   stdout.String(),
 			Stderr:   stderr.String(),
-			ExitCode: exitCode,
-		}, errors.Wrap(err, "cmd.Wait failed")
+			ExitCode: 0,
+			Json:     v,
+		}, nil
 	}
 
 	return &ShellDriverDoRes{

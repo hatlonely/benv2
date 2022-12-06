@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -75,6 +76,10 @@ func (a *A) Func2CtxErr(ctx context.Context, req *Func2Req) (*Func2Res, error) {
 		ResF1: req.ReqF1 + req.ReqF1,
 		ResF2: req.ReqF2 + req.ReqF2,
 	}, nil
+}
+
+func (a *A) Func2CtxErrCode(ctx context.Context, req *Func2Req) (*Func2Res, error) {
+	return nil, NewError(errors.New("timeout"), "Timeout", "Message")
 }
 
 type Func3Res struct {
@@ -196,6 +201,17 @@ func TestWrapDriver(t *testing.T) {
 				"B": int64(2),
 				"C": "val3",
 			})
+		})
+
+		Convey("error", func() {
+			_, err := d.Do(map[string]interface{}{
+				"Method": "Func2CtxErrCode",
+				"ReqF1":  "val2",
+				"ReqF2":  22,
+			})
+			So(err, ShouldNotBeNil)
+			So(err.(*Error).Code, ShouldEqual, "Timeout")
+			So(err.(*Error).Message, ShouldEqual, "Message")
 		})
 	})
 
