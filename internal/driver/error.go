@@ -3,14 +3,24 @@ package driver
 import (
 	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 )
 
 func NewError(err error, code string, message string) *Error {
+	if err != nil {
+		err = errors.Errorf("[%s]: %s", code, message)
+	}
+
 	return &Error{
 		err:     err,
 		Code:    code,
 		Message: message,
 	}
+}
+
+func NewErrorf(err error, code string, format string, v ...interface{}) *Error {
+	return NewError(err, code, fmt.Sprintf(format, v...))
 }
 
 type Error struct {

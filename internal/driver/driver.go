@@ -124,12 +124,12 @@ func (d *WrapDriver) Do(v interface{}) (interface{}, error) {
 		var ok bool
 		methodName, ok = methodNameV.(string)
 		if !ok {
-			return nil, errors.Errorf("method should be string")
+			return nil, NewError(nil, "driver.InvalidMethodName", "method should be string")
 		}
 	}
 	method := d.inner.MethodByName(methodName)
 	if !method.IsValid() {
-		return nil, errors.Errorf("NoSuchMethod [%s]", methodName)
+		return nil, NewErrorf(nil, "driver.NoSuchMethod", "no such method [%s]", methodName)
 	}
 
 	mt := method.Type()
@@ -147,7 +147,7 @@ func (d *WrapDriver) Do(v interface{}) (interface{}, error) {
 		req := reflect.New(mt.In(0))
 		err := refx.InterfaceToStruct(v, req.Interface())
 		if err != nil {
-			return nil, errors.WithMessage(err, "refx.InterfaceToStruct failed")
+			return nil, NewErrorf(err, "driver.ConstructReqFailed", "refx.InterfaceToStruct failed, err: [%s]", err.Error())
 		}
 		return resultToInterface(mt, method.Call([]reflect.Value{req.Elem()}))
 	}
@@ -157,7 +157,7 @@ func (d *WrapDriver) Do(v interface{}) (interface{}, error) {
 			req := reflect.New(mt.In(1))
 			err := refx.InterfaceToStruct(v, req.Interface())
 			if err != nil {
-				return nil, errors.WithMessage(err, "refx.InterfaceToStruct failed")
+				return nil, NewErrorf(err, "driver.ConstructReqFailed", "refx.InterfaceToStruct failed, err: [%s]", err.Error())
 			}
 			return resultToInterface(mt, method.Call([]reflect.Value{reflect.ValueOf(context.Background()), req.Elem()}))
 		}
@@ -173,17 +173,17 @@ func (d *WrapDriver) Do(v interface{}) (interface{}, error) {
 	// func(arg1, arg2, ...)
 	argsV, err := refx.InterfaceGet(v, "args")
 	if err != nil {
-		return nil, errors.Errorf("missing required field args")
+		return nil, NewError(nil, "driver.MissingArgument.Args", "missing required field args")
 	}
 	argsRv := reflect.ValueOf(argsV)
 	if argsRv.Type().Kind() != reflect.Slice {
-		return nil, errors.Errorf("args should be slice")
+		return nil, NewError(nil, "driver.InvalidArgument.Args", "args should be slice")
 	}
 	for i := 0; i < argsRv.Len(); i++ {
 		arg := reflect.New(mt.In(idx))
 		err := refx.InterfaceToStruct(argsRv.Index(i).Interface(), arg.Interface())
 		if err != nil {
-			return nil, errors.WithMessage(err, "refx.InterfaceToStruct failed")
+			return nil, NewErrorf(err, "driver.ConstructReqFailed", "refx.InterfaceToStruct failed, err: [%s]", err.Error())
 		}
 		args = append(args, arg.Elem())
 		idx++
@@ -208,7 +208,7 @@ func resultToInterface(mt reflect.Type, results []reflect.Value) (interface{}, e
 	}
 	if mt.NumOut() == 2 {
 		if mt.Out(1) != reflect.TypeOf((*error)(nil)).Elem() {
-			return nil, errors.Errorf("the second result should be error")
+			return nil, NewError(nil, "driver.InvalidMethod", "the second result should be error")
 		}
 		if results[1].IsNil() {
 			v, err := structToInterface(results[0].Interface())
@@ -219,7 +219,7 @@ func resultToInterface(mt reflect.Type, results []reflect.Value) (interface{}, e
 		}
 		return nil, results[1].Interface().(error)
 	}
-	return nil, errors.New("return too many values")
+	return nil, NewError(nil, "driver.InvalidMethod", "return too many values")
 }
 
 func structToInterface(src interface{}) (interface{}, error) {
