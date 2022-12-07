@@ -29,10 +29,12 @@ source:
       - key1: val3
         key2: val4
 plan:
-  duration: 1s 
+  duration: 1s
+  parallel:
+    - unit1: 3
+    - unit1: 5
   unit:
     - name: unit1
-      parallel: 3
       step:
         - ctx: sh
           req:

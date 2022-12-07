@@ -31,6 +31,7 @@ type Recorder interface {
 
 type UnitStat struct {
 	Time    string
+	Idx     int
 	Name    string
 	Step    []*StepStat
 	ErrCode string

@@ -23,10 +23,10 @@ type Options struct {
 	Source map[string]refx.TypeOptions
 	Plan   struct {
 		Duration time.Duration
+		Parallel []map[string]int
 		Unit     []struct {
-			Parallel int `dft:"1"`
-			Name     string
-			Step     []*struct {
+			Name string
+			Step []*struct {
 				Ctx string
 				Req interface{}
 			}
@@ -56,7 +56,10 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 		}
 	}
 
-	var plan PlanInfo
+	plan := &PlanInfo{
+		Duration: options.Plan.Duration,
+		Parallel: options.Plan.Parallel,
+	}
 	for _, unitDesc := range options.Plan.Unit {
 		var step []*StepInfo
 		for _, stepDesc := range unitDesc.Step {
@@ -70,9 +73,8 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 			})
 		}
 		plan.Unit = append(plan.Unit, &UnitInfo{
-			Parallel: unitDesc.Parallel,
-			Name:     unitDesc.Name,
-			Step:     step,
+			Name: unitDesc.Name,
+			Step: step,
 		})
 	}
 
@@ -103,7 +105,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 		name:       options.Name,
 		ctx:        ctx,
 		source:     source_,
-		plan:       &plan,
+		plan:       plan,
 		recorder:   recorder_,
 		analyst:    analyst,
 		statistics: statistics,
@@ -124,13 +126,13 @@ type Framework struct {
 
 type PlanInfo struct {
 	Duration time.Duration
+	Parallel []map[string]int
 	Unit     []*UnitInfo
 }
 
 type UnitInfo struct {
-	Parallel int
-	Name     string
-	Step     []*StepInfo
+	Name string
+	Step []*StepInfo
 }
 
 type StepInfo struct {
@@ -139,39 +141,47 @@ type StepInfo struct {
 }
 
 func (fw *Framework) Run() error {
-	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	for _, unit := range fw.plan.Unit {
-		for i := 0; i < unit.Parallel; i++ {
-			wg.Add(1)
-			go func(unit *UnitInfo) {
-			out:
-				for {
-					select {
-					case <-ctx.Done():
-						break out
-					case <-time.After(fw.plan.Duration):
-						break out
-					default:
-						stat, err := fw.RunUnit(unit)
-						if err != nil {
-							fmt.Println(err)
-							cancel()
-						}
-						err = fw.recorder.Record(stat)
-						if err != nil {
-							fmt.Println(err)
-							cancel()
+	for idx, parallelMap := range fw.plan.Parallel {
+		var wg sync.WaitGroup
+		ctx, cancel := context.WithCancel(context.Background())
+		for _, unit := range fw.plan.Unit {
+			parallel, ok := parallelMap[unit.Name]
+			if !ok {
+				continue
+			}
+			for i := 0; i < parallel; i++ {
+				wg.Add(1)
+				go func(unit *UnitInfo, idx int) {
+					deadline := time.After(fw.plan.Duration)
+				out:
+					for {
+						select {
+						case <-ctx.Done():
+							break out
+						case <-deadline:
+							break out
+						default:
+							stat, err := fw.RunUnit(unit)
+							stat.Idx = idx
+							if err != nil {
+								fmt.Println(err)
+								cancel()
+							}
+							err = fw.recorder.Record(stat)
+							if err != nil {
+								fmt.Println(err)
+								cancel()
+							}
 						}
 					}
-				}
-
-				wg.Done()
-			}(unit)
+					wg.Done()
+				}(unit, idx)
+			}
 		}
+		wg.Wait()
+		cancel()
 	}
-	wg.Wait()
+
 	fw.recorder.Close()
 
 	if fw.analyst != nil {
