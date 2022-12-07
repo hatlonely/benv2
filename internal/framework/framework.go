@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hatlonely/benv2/internal/reporter"
+
 	"github.com/hatlonely/go-kit/refx"
 	"github.com/pkg/errors"
 
@@ -30,21 +32,14 @@ type Options struct {
 			}
 		}
 	}
-	Recorder refx.TypeOptions
-	Analyst  refx.TypeOptions
+	Recorder   refx.TypeOptions
+	Analyst    refx.TypeOptions
+	Statistics recorder.StatisticsOptions
+	Reporter   refx.TypeOptions
 }
 
 func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework, error) {
-	recorder_, err := recorder.NewRecorderWithOptions(&options.Recorder, opts...)
-	if err != nil {
-		return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
-	}
-
-	analyst, err := recorder.NewAnalystWithOptions(&options.Analyst, opts...)
-	if err != nil {
-		return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
-	}
-
+	var err error
 	ctx := map[string]driver.Driver{}
 	for key, refxOptions := range options.Ctx {
 		ctx[key], err = driver.NewDriverWithOptions(&refxOptions, opts...)
@@ -81,23 +76,50 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 		})
 	}
 
+	recorder_, err := recorder.NewRecorderWithOptions(&options.Recorder, opts...)
+	if err != nil {
+		return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
+	}
+
+	var analyst recorder.Analyst
+	if options.Analyst.Type != "" {
+		analyst, err = recorder.NewAnalystWithOptions(&options.Analyst, opts...)
+		if err != nil {
+			return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
+		}
+	}
+
+	statistics := recorder.NewStatisticsWithOptions(&options.Statistics)
+
+	if options.Reporter.Type == "" {
+		options.Reporter.Type = "Json"
+	}
+	reporter_, err := reporter.NewReporterWithOptions(&options.Reporter, opts...)
+	if err != nil {
+		return nil, errors.WithMessage(err, "reporter.NewReporterWithOptions failed")
+	}
+
 	return &Framework{
-		name:     options.Name,
-		ctx:      ctx,
-		source:   source_,
-		plan:     &plan,
-		recorder: recorder_,
-		analyst:  analyst,
+		name:       options.Name,
+		ctx:        ctx,
+		source:     source_,
+		plan:       &plan,
+		recorder:   recorder_,
+		analyst:    analyst,
+		statistics: statistics,
+		reporter:   reporter_,
 	}, nil
 }
 
 type Framework struct {
-	name     string
-	ctx      map[string]driver.Driver
-	source   map[string]source.Source
-	plan     *PlanInfo
-	recorder recorder.Recorder
-	analyst  recorder.Analyst
+	name       string
+	ctx        map[string]driver.Driver
+	source     map[string]source.Source
+	plan       *PlanInfo
+	recorder   recorder.Recorder
+	analyst    recorder.Analyst
+	statistics *recorder.Statistics
+	reporter   reporter.Reporter
 }
 
 type PlanInfo struct {
@@ -118,8 +140,6 @@ type StepInfo struct {
 
 func (fw *Framework) Run() error {
 	var wg sync.WaitGroup
-	defer fw.recorder.Close()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for _, unit := range fw.plan.Unit {
@@ -151,8 +171,17 @@ func (fw *Framework) Run() error {
 			}(unit)
 		}
 	}
-
 	wg.Wait()
+	fw.recorder.Close()
+
+	if fw.analyst != nil {
+		metric, err := fw.statistics.Statistics(fw.analyst)
+		if err != nil {
+			return errors.WithMessage(err, "statistics.Statistics failed")
+		}
+
+		fmt.Println(fw.reporter.Report(metric))
+	}
 
 	return nil
 }

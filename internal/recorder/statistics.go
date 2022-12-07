@@ -6,6 +6,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+func NewStatisticsWithOptions(options *StatisticsOptions) *Statistics {
+	return &Statistics{
+		options: options,
+	}
+}
+
 type StatisticsOptions struct {
 	PointNumber int `dft:"100"`
 	Interval    time.Duration
@@ -121,6 +127,10 @@ func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
 			return nil, errors.WithMessage(err, "stream.Next failed")
 		}
 
+		if stat == nil {
+			break
+		}
+
 		t, err := time.Parse(time.RFC3339Nano, stat.Time)
 		if err != nil {
 			return nil, errors.WithMessage(err, "time.Parse failed")
@@ -137,10 +147,6 @@ func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
 			aggregation.Pass += 1
 			aggregation.PassResTime += stat.ResTime
 			aggregation.ErrCode["OK"] += 1
-		}
-
-		if stat == nil {
-			break
 		}
 	}
 
