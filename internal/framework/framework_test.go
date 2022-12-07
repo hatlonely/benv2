@@ -54,6 +54,9 @@ analyst:
   type: File
   options:
     filePath: ben.json
+
+statistics:
+  pointNumber: 5
 `
 
 func TestFramework_RunPlan(t *testing.T) {

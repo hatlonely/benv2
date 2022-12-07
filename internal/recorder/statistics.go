@@ -96,7 +96,7 @@ type Aggregation struct {
 
 func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
 	st, et, err := analyst.TimeRange()
-	et.Add(1) // 边界处理
+	et = et.Add(1) // 边界处理
 	if err != nil {
 		return nil, errors.WithMessage(err, "analyst.TimeRange")
 	}
@@ -109,7 +109,7 @@ func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
 	}
 
 	var aggregations []*Aggregation
-	for i := st; i.Before(et); i.Add(interval) {
+	for i := st; i.Before(et); i = i.Add(interval) {
 		aggregations = append(aggregations, &Aggregation{
 			Time:     i,
 			Duration: interval,
