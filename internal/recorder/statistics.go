@@ -22,10 +22,10 @@ type Statistics struct {
 }
 
 type Metric struct {
-	QPS                 []*Measurement
-	AvgResTimeMs        []*Measurement
-	SuccessRatePercent  []*Measurement
-	ErrCodeDistribution map[string]int
+	QPS                 map[string][]*Measurement
+	AvgResTimeMs        map[string][]*Measurement
+	SuccessRatePercent  map[string][]*Measurement
+	ErrCodeDistribution map[string]map[string]int
 }
 type Measurement struct {
 	Time  time.Time
@@ -33,53 +33,64 @@ type Measurement struct {
 }
 
 func (s *Statistics) Statistics(analyst Analyst) (*Metric, error) {
-	aggregations, err := s.aggregation(analyst)
+	aggregationMap, err := s.aggregation(analyst)
 	if err != nil {
 		return nil, errors.WithMessage(err, "aggregation failed")
 	}
 
-	qps := make([]*Measurement, 0, len(aggregations))
-	for _, aggregation := range aggregations {
-		qps = append(qps, &Measurement{
-			Time:  aggregation.Time,
-			Value: float64(aggregation.Pass) / aggregation.Duration.Seconds(),
-		})
-	}
+	qpsMap := map[string][]*Measurement{}
+	avgResTimeMsMap := map[string][]*Measurement{}
+	successRatePercentMap := map[string][]*Measurement{}
+	errCodeDistributionMap := map[string]map[string]int{}
 
-	avgResTimeMs := make([]*Measurement, 0, len(aggregations))
-	for _, aggregation := range aggregations {
-		if aggregation.Pass == 0 {
-			continue
+	for key, aggregations := range aggregationMap {
+		qps := make([]*Measurement, 0, len(aggregations))
+		for _, aggregation := range aggregations {
+			qps = append(qps, &Measurement{
+				Time:  aggregation.Time,
+				Value: float64(aggregation.Pass) / aggregation.Duration.Seconds(),
+			})
 		}
-		avgResTimeMs = append(avgResTimeMs, &Measurement{
-			Time:  aggregation.Time,
-			Value: float64(aggregation.PassResTime.Milliseconds()) / float64(aggregation.Pass),
-		})
-	}
+		qpsMap[key] = qps
 
-	successRatePercent := make([]*Measurement, 0, len(aggregations))
-	for _, aggregation := range aggregations {
-		if aggregation.Total == 0 {
-			continue
+		avgResTimeMs := make([]*Measurement, 0, len(aggregations))
+		for _, aggregation := range aggregations {
+			if aggregation.Pass == 0 {
+				continue
+			}
+			avgResTimeMs = append(avgResTimeMs, &Measurement{
+				Time:  aggregation.Time,
+				Value: float64(aggregation.PassResTime.Milliseconds()) / float64(aggregation.Pass),
+			})
 		}
-		successRatePercent = append(successRatePercent, &Measurement{
-			Time:  aggregation.Time,
-			Value: float64(aggregation.Pass*100) / float64(aggregation.Total),
-		})
-	}
+		avgResTimeMsMap[key] = avgResTimeMs
 
-	errCodeDistribution := map[string]int{}
-	for _, aggregation := range aggregations {
-		for key, val := range aggregation.ErrCode {
-			errCodeDistribution[key] += val
+		successRatePercent := make([]*Measurement, 0, len(aggregations))
+		for _, aggregation := range aggregations {
+			if aggregation.Total == 0 {
+				continue
+			}
+			successRatePercent = append(successRatePercent, &Measurement{
+				Time:  aggregation.Time,
+				Value: float64(aggregation.Pass*100) / float64(aggregation.Total),
+			})
 		}
+		successRatePercentMap[key] = successRatePercent
+
+		errCodeDistribution := map[string]int{}
+		for _, aggregation := range aggregations {
+			for key, val := range aggregation.ErrCode {
+				errCodeDistribution[key] += val
+			}
+		}
+		errCodeDistributionMap[key] = errCodeDistribution
 	}
 
 	return &Metric{
-		QPS:                 qps,
-		AvgResTimeMs:        avgResTimeMs,
-		SuccessRatePercent:  successRatePercent,
-		ErrCodeDistribution: errCodeDistribution,
+		QPS:                 qpsMap,
+		AvgResTimeMs:        avgResTimeMsMap,
+		SuccessRatePercent:  successRatePercentMap,
+		ErrCodeDistribution: errCodeDistributionMap,
 	}, nil
 }
 
@@ -94,7 +105,7 @@ type Aggregation struct {
 	ErrCode      map[string]int
 }
 
-func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
+func (s *Statistics) aggregation(analyst Analyst) (map[string][]*Aggregation, error) {
 	st, et, err := analyst.TimeRange()
 	et = et.Add(1) // 边界处理
 	if err != nil {
@@ -108,14 +119,7 @@ func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
 		interval = et.Sub(st) / time.Duration(s.options.PointNumber)
 	}
 
-	var aggregations []*Aggregation
-	for i := st; i.Before(et); i = i.Add(interval) {
-		aggregations = append(aggregations, &Aggregation{
-			Time:     i,
-			Duration: interval,
-			ErrCode:  map[string]int{},
-		})
-	}
+	aggregationMap := map[string][]*Aggregation{}
 
 	stream, err := analyst.UnitStatStream()
 	if err != nil {
@@ -137,7 +141,19 @@ func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
 		}
 		idx := t.Sub(st) / interval
 
-		aggregation := aggregations[idx]
+		if _, ok := aggregationMap[stat.Name]; !ok {
+			var aggregations []*Aggregation
+			for i := st; i.Before(et); i = i.Add(interval) {
+				aggregations = append(aggregations, &Aggregation{
+					Time:     i,
+					Duration: interval,
+					ErrCode:  map[string]int{},
+				})
+			}
+			aggregationMap[stat.Name] = aggregations
+		}
+
+		aggregation := aggregationMap[stat.Name][idx]
 		aggregation.Total += 1
 		aggregation.TotalResTime += stat.ResTime
 		if stat.ErrCode != "" {
@@ -150,5 +166,5 @@ func (s *Statistics) aggregation(analyst Analyst) ([]*Aggregation, error) {
 		}
 	}
 
-	return aggregations, nil
+	return aggregationMap, nil
 }
