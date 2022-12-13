@@ -31,9 +31,13 @@ type Recorder interface {
 }
 
 type Meta struct {
-	ID       string
-	Name     string
-	Parallel []map[string]int
+	ID        string
+	Name      string
+	Parallel  []map[string]int
+	TimeRange []*struct {
+		StartTime time.Time
+		EndTime   time.Time
+	}
 }
 
 type UnitStat struct {

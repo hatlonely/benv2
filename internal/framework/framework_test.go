@@ -61,6 +61,9 @@ analyst:
 
 statistics:
   pointNumber: 5
+
+reporter:
+  type: Text
 `
 
 func TestFramework_RunPlan(t *testing.T) {
