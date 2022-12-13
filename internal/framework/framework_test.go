@@ -51,11 +51,13 @@ recorder:
   type: File
   options:
     filePath: ben.json
+    metaPath: meta.json
 
 analyst:
   type: File
   options:
     filePath: ben.json
+    metaPath: meta.json
 
 statistics:
   pointNumber: 5

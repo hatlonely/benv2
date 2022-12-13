@@ -25,8 +25,14 @@ func NewRecorderWithOptions(options *refx.TypeOptions, opts ...refx.Option) (Rec
 }
 
 type Recorder interface {
+	RecordMeta(meta *Meta) error
 	Record(stat *UnitStat) error
 	Close() error
+}
+
+type Meta struct {
+	Name     string
+	Parallel []map[string]int
 }
 
 type UnitStat struct {

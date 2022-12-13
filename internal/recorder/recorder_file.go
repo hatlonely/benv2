@@ -2,16 +2,19 @@ package recorder
 
 import (
 	"bufio"
+	"io/ioutil"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/hatlonely/go-kit/strx"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 )
 
 type FileRecorderOptions struct {
 	FilePath        string
+	MetaPath        string
 	BufSize         int `dft:"32768"`
 	UseRecorderTime bool
 }
@@ -43,6 +46,15 @@ func (r *FileRecorder) Close() error {
 	}
 	if err := r.fp.Close(); err != nil {
 		return errors.Wrap(err, "fp.Close failed")
+	}
+	return nil
+}
+
+func (r *FileRecorder) RecordMeta(meta *Meta) error {
+	buf, _ := jsoniter.Marshal(meta)
+	err := ioutil.WriteFile(r.options.MetaPath, buf, 0644)
+	if err != nil {
+		return errors.Wrap(err, "ioutil.WriteFile failed")
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 type FileAnalystOptions struct {
 	FilePath string
+	MetaPath string
 }
 
 func NewFileAnalystWithOptions(options *FileAnalystOptions) (*FileAnalyst, error) {
@@ -23,6 +25,19 @@ func NewFileAnalystWithOptions(options *FileAnalystOptions) (*FileAnalyst, error
 
 type FileAnalyst struct {
 	options *FileAnalystOptions
+}
+
+func (fa *FileAnalyst) Meta() (*Meta, error) {
+	buf, err := ioutil.ReadFile(fa.options.MetaPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "ioutil.ReadFile failed")
+	}
+	var meta Meta
+	if err := jsoniter.Unmarshal(buf, &meta); err != nil {
+		return nil, errors.Wrap(err, "jsoniter.Unmarshal failed")
+	}
+
+	return &meta, nil
 }
 
 func (fa *FileAnalyst) TimeRange() (time.Time, time.Time, error) {

@@ -139,6 +139,13 @@ type StepInfo struct {
 }
 
 func (fw *Framework) Run() error {
+	if err := fw.recorder.RecordMeta(&recorder.Meta{
+		Name:     fw.name,
+		Parallel: fw.plan.Parallel,
+	}); err != nil {
+		return errors.WithMessage(err, "recorder.RecordMeta failed")
+	}
+
 	for idx, parallelMap := range fw.plan.Parallel {
 		var wg sync.WaitGroup
 		ctx, cancel := context.WithCancel(context.Background())
@@ -183,12 +190,17 @@ func (fw *Framework) Run() error {
 	fw.recorder.Close()
 
 	if fw.analyst != nil {
-		metric, err := fw.statistics.Statistics(fw.analyst)
+		metrics, err := fw.statistics.Statistics(fw.analyst)
 		if err != nil {
 			return errors.WithMessage(err, "statistics.Statistics failed")
 		}
 
-		fmt.Println(fw.reporter.Report(metric))
+		meta, err := fw.analyst.Meta()
+		if err != nil {
+			return errors.WithMessage(err, "analyst.Meta failed")
+		}
+
+		fmt.Println(fw.reporter.Report(meta, metrics))
 	}
 
 	return nil
