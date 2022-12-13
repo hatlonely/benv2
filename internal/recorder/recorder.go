@@ -31,11 +31,13 @@ type Recorder interface {
 }
 
 type Meta struct {
+	ID       string
 	Name     string
 	Parallel []map[string]int
 }
 
 type UnitStat struct {
+	ID      string
 	Time    string
 	Seq     int
 	Name    string

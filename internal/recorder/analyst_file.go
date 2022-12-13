@@ -147,9 +147,10 @@ func (fa *FileAnalyst) TimeRange() (time.Time, time.Time, error) {
 type FileAnalystStatStream struct {
 	fp     *os.File
 	reader *bufio.Reader
+	id     string
 }
 
-func (fa *FileAnalyst) UnitStatStream() (StatStream, error) {
+func (fa *FileAnalyst) UnitStatStream(id string) (StatStream, error) {
 	fp, err := os.Open(fa.options.FilePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "os.Open failed")
@@ -159,23 +160,31 @@ func (fa *FileAnalyst) UnitStatStream() (StatStream, error) {
 	return &FileAnalystStatStream{
 		fp:     fp,
 		reader: reader,
+		id:     id,
 	}, nil
 }
 
 func (s *FileAnalystStatStream) Next() (*UnitStat, error) {
-	buf, err := s.reader.ReadBytes('\n')
-	if err != nil && err != io.EOF {
-		return nil, errors.Wrapf(err, "reader.ReadBytes failed")
-	}
-
-	if err == io.EOF {
-		_ = s.fp.Close()
-		return nil, nil
-	}
-
 	var v UnitStat
-	if err := jsoniter.Unmarshal(buf, &v); err != nil {
-		return nil, errors.Wrapf(err, "jsoniter.Unmarshal failed")
+
+	for {
+		buf, err := s.reader.ReadBytes('\n')
+		if err != nil && err != io.EOF {
+			return nil, errors.Wrapf(err, "reader.ReadBytes failed")
+		}
+
+		if err == io.EOF {
+			_ = s.fp.Close()
+			return nil, nil
+		}
+
+		if err := jsoniter.Unmarshal(buf, &v); err != nil {
+			return nil, errors.Wrapf(err, "jsoniter.Unmarshal failed")
+		}
+
+		if v.ID == s.id {
+			break
+		}
 	}
 
 	return &v, nil

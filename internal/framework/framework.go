@@ -16,6 +16,7 @@ import (
 )
 
 type Options struct {
+	ID     string
 	Name   string
 	Ctx    map[string]refx.TypeOptions
 	Source map[string]refx.TypeOptions
@@ -100,6 +101,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 	}
 
 	return &Framework{
+		id:         options.ID,
 		name:       options.Name,
 		ctx:        ctx,
 		source:     source_,
@@ -112,6 +114,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 }
 
 type Framework struct {
+	id         string
 	name       string
 	ctx        map[string]driver.Driver
 	source     map[string]source.Source
@@ -140,6 +143,7 @@ type StepInfo struct {
 
 func (fw *Framework) Run() error {
 	if err := fw.recorder.RecordMeta(&recorder.Meta{
+		ID:       fw.id,
 		Name:     fw.name,
 		Parallel: fw.plan.Parallel,
 	}); err != nil {
@@ -187,10 +191,10 @@ func (fw *Framework) Run() error {
 		cancel()
 	}
 
-	fw.recorder.Close()
+	_ = fw.recorder.Close()
 
 	if fw.analyst != nil {
-		metrics, err := fw.statistics.Statistics(fw.analyst)
+		metrics, err := fw.statistics.Statistics(fw.id, fw.analyst)
 		if err != nil {
 			return errors.WithMessage(err, "statistics.Statistics failed")
 		}
@@ -207,7 +211,7 @@ func (fw *Framework) Run() error {
 }
 
 func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
-	unitStat := &recorder.UnitStat{Name: info.Name}
+	unitStat := &recorder.UnitStat{Name: info.Name, ID: fw.id}
 	var err error
 
 	// fetch source

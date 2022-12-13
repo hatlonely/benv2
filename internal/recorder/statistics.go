@@ -32,8 +32,8 @@ type Measurement struct {
 	Value float64
 }
 
-func (s *Statistics) Statistics(analyst Analyst) ([]*Metric, error) {
-	aggregations, err := s.aggregation(analyst)
+func (s *Statistics) Statistics(id string, analyst Analyst) ([]*Metric, error) {
+	aggregations, err := s.aggregation(id, analyst)
 	if err != nil {
 		return nil, errors.WithMessage(err, "aggregation failed")
 	}
@@ -118,7 +118,7 @@ type Aggregation struct {
 	ErrCode      map[string]int
 }
 
-func (s *Statistics) aggregation(analyst Analyst) ([]map[string][]*Aggregation, error) {
+func (s *Statistics) aggregation(id string, analyst Analyst) ([]map[string][]*Aggregation, error) {
 	st, et, err := analyst.TimeRange()
 	et = et.Add(1) // 边界处理
 	if err != nil {
@@ -134,7 +134,7 @@ func (s *Statistics) aggregation(analyst Analyst) ([]map[string][]*Aggregation, 
 
 	aggregationIdxMap := map[int]map[string][]*Aggregation{}
 
-	stream, err := analyst.UnitStatStream()
+	stream, err := analyst.UnitStatStream(id)
 	if err != nil {
 		return nil, errors.WithMessage(err, "analyst.UnitStatStream failed")
 	}
