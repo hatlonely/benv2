@@ -160,7 +160,7 @@ func (fw *Framework) Run() error {
 							break out
 						default:
 							stat, err := fw.RunUnit(unit)
-							stat.Idx = idx
+							stat.Seq = idx
 							if err != nil {
 								fmt.Println(err)
 								cancel()

@@ -32,12 +32,25 @@ type Measurement struct {
 	Value float64
 }
 
-func (s *Statistics) Statistics(analyst Analyst) (*Metric, error) {
-	aggregationMap, err := s.aggregation(analyst)
+func (s *Statistics) Statistics(analyst Analyst) ([]*Metric, error) {
+	aggregations, err := s.aggregation(analyst)
 	if err != nil {
 		return nil, errors.WithMessage(err, "aggregation failed")
 	}
 
+	var metrics []*Metric
+	for _, aggregationMap := range aggregations {
+		metric, err := s.calculate(aggregationMap)
+		if err != nil {
+			return nil, errors.WithMessage(err, "s.calculate failed")
+		}
+		metrics = append(metrics, metric)
+	}
+
+	return metrics, nil
+}
+
+func (s *Statistics) calculate(aggregationMap map[string][]*Aggregation) (*Metric, error) {
 	qpsMap := map[string][]*Measurement{}
 	avgResTimeMsMap := map[string][]*Measurement{}
 	successRatePercentMap := map[string][]*Measurement{}
@@ -105,7 +118,7 @@ type Aggregation struct {
 	ErrCode      map[string]int
 }
 
-func (s *Statistics) aggregation(analyst Analyst) (map[string][]*Aggregation, error) {
+func (s *Statistics) aggregation(analyst Analyst) ([]map[string][]*Aggregation, error) {
 	st, et, err := analyst.TimeRange()
 	et = et.Add(1) // 边界处理
 	if err != nil {
@@ -119,7 +132,7 @@ func (s *Statistics) aggregation(analyst Analyst) (map[string][]*Aggregation, er
 		interval = et.Sub(st) / time.Duration(s.options.PointNumber)
 	}
 
-	aggregationMap := map[string][]*Aggregation{}
+	aggregationIdxMap := map[int]map[string][]*Aggregation{}
 
 	stream, err := analyst.UnitStatStream()
 	if err != nil {
@@ -141,6 +154,11 @@ func (s *Statistics) aggregation(analyst Analyst) (map[string][]*Aggregation, er
 		}
 		idx := t.Sub(st) / interval
 
+		aggregationMap, ok := aggregationIdxMap[stat.Seq]
+		if !ok {
+			aggregationMap = map[string][]*Aggregation{}
+			aggregationIdxMap[stat.Seq] = aggregationMap
+		}
 		if _, ok := aggregationMap[stat.Name]; !ok {
 			var aggregations []*Aggregation
 			for i := st; i.Before(et); i = i.Add(interval) {
@@ -166,5 +184,10 @@ func (s *Statistics) aggregation(analyst Analyst) (map[string][]*Aggregation, er
 		}
 	}
 
-	return aggregationMap, nil
+	var aggregations []map[string][]*Aggregation
+	for i := 0; i < len(aggregationIdxMap); i++ {
+		aggregations = append(aggregations, aggregationIdxMap[i])
+	}
+
+	return aggregations, nil
 }

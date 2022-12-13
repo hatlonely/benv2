@@ -7,6 +7,6 @@ import (
 
 type JsonReporter struct{}
 
-func (r *JsonReporter) Report(metric *recorder.Metric) string {
+func (r *JsonReporter) Report(metric []*recorder.Metric) string {
 	return strx.JsonMarshalIndentSortKeys(metric)
 }
