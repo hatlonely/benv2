@@ -6,15 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hatlonely/benv2/internal/reporter"
-
-	"github.com/hatlonely/go-kit/refx"
-	"github.com/pkg/errors"
-
 	"github.com/hatlonely/benv2/internal/driver"
 	"github.com/hatlonely/benv2/internal/eval"
 	"github.com/hatlonely/benv2/internal/recorder"
+	"github.com/hatlonely/benv2/internal/reporter"
 	"github.com/hatlonely/benv2/internal/source"
+	"github.com/hatlonely/go-kit/refx"
+	"github.com/pkg/errors"
 )
 
 type Options struct {
