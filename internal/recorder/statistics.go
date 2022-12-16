@@ -22,14 +22,24 @@ type Statistics struct {
 }
 
 type Metric struct {
+	Summary             map[string]*Summary
 	QPS                 map[string][]*Measurement
 	AvgResTimeMs        map[string][]*Measurement
 	SuccessRatePercent  map[string][]*Measurement
 	ErrCodeDistribution map[string]map[string]int
 }
+
 type Measurement struct {
 	Time  time.Time
 	Value float64
+}
+
+type Summary struct {
+	Total              int
+	Pass               int
+	QPS                float64
+	AvgResTimeMs       float64
+	SuccessRatePercent float64
 }
 
 func (s *Statistics) Statistics(id string, analyst Analyst) ([]*Metric, error) {
@@ -51,12 +61,26 @@ func (s *Statistics) Statistics(id string, analyst Analyst) ([]*Metric, error) {
 }
 
 func (s *Statistics) calculate(aggregationMap map[string][]*Aggregation) (*Metric, error) {
+	summaryMap := map[string]*Summary{}
 	qpsMap := map[string][]*Measurement{}
 	avgResTimeMsMap := map[string][]*Measurement{}
 	successRatePercentMap := map[string][]*Measurement{}
 	errCodeDistributionMap := map[string]map[string]int{}
 
 	for key, aggregations := range aggregationMap {
+		var summary Summary
+		totalResTime := time.Duration(0)
+		// 丢弃最后一次结果
+		for i := 0; i < len(aggregations)-1; i++ {
+			summary.Total += aggregations[i].Total
+			summary.Pass += aggregations[i].Pass
+			totalResTime += aggregations[i].PassResTime
+		}
+		summary.QPS = float64(summary.Pass) / aggregations[len(aggregations)-1].Time.Sub(aggregations[0].Time).Seconds()
+		summary.AvgResTimeMs = float64(totalResTime.Milliseconds()) / float64(summary.Pass)
+		summary.SuccessRatePercent = float64(summary.Pass*100) / float64(summary.Total)
+		summaryMap[key] = &summary
+
 		qps := make([]*Measurement, 0, len(aggregations))
 		for _, aggregation := range aggregations {
 			qps = append(qps, &Measurement{
