@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hatlonely/go-kit/strx"
+
 	"github.com/hatlonely/benv2/internal/recorder"
 )
 
@@ -16,7 +18,7 @@ func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) s
 
 	for i := range metrics {
 		buf.WriteString(buildUnit(meta.Parallel[i], metrics[i]))
-		buf.WriteString("----------------------------------\n")
+		buf.WriteString("==================================================================================\n")
 	}
 
 	return buf.String()
@@ -26,9 +28,16 @@ func buildUnit(parallel map[string]int, metric *recorder.Metric) string {
 	var buf bytes.Buffer
 
 	buf.WriteString(buildParallel(parallel))
-	buf.WriteString("\n")
+	buf.WriteByte('\n')
 
-	buf.WriteString(buildMeasurementMap("QPS", metric.QPS))
+	buf.WriteString(buildErrCodeDistribution(metric.ErrCodeDistribution))
+	buf.WriteByte('\n')
+	buf.WriteString(buildMeasurementMap(20, 9, "QPS", metric.QPS))
+	buf.WriteByte('\n')
+	buf.WriteString(buildMeasurementMap(20, 9, "AvgResTimeMs", metric.AvgResTimeMs))
+	buf.WriteByte('\n')
+	buf.WriteString(buildMeasurementMap(20, 9, "SuccessRatePercent", metric.SuccessRatePercent))
+	buf.WriteByte('\n')
 
 	return buf.String()
 }
@@ -45,13 +54,42 @@ func buildParallel(parallel map[string]int) string {
 		parallels = append(parallels, fmt.Sprintf("%s: %d", key, parallel[key]))
 	}
 
-	return strings.Join(parallels, ",")
+	return strings.Join(parallels, ",") + "\n"
 }
 
-func buildMeasurementMap(title string, measurementMap map[string][]*recorder.Measurement) string {
+func buildErrCodeDistribution(errCodeDistribution map[string]map[string]int) string {
 	var buf bytes.Buffer
 
-	keyWidth := len(title)
+	for key, val := range errCodeDistribution {
+		buf.WriteString(key)
+		buf.WriteString(": ")
+		buf.WriteString(strx.JsonMarshalSortKeys(val))
+		buf.WriteByte('\n')
+	}
+
+	return buf.String()
+}
+
+func appendCenter(buf *bytes.Buffer, width int, str string) {
+	if len(str) >= width {
+		buf.WriteString(str)
+	}
+	space := width - len(str)
+	left := space / 2
+	right := space - left
+	for i := 0; i < left; i++ {
+		buf.WriteByte(' ')
+	}
+	buf.WriteString(str)
+	for i := 0; i < right; i++ {
+		buf.WriteByte(' ')
+	}
+}
+
+func buildMeasurementMap(titleWidth, valueWidth int, title string, measurementMap map[string][]*recorder.Measurement) string {
+	var buf bytes.Buffer
+
+	keyWidth := titleWidth
 	var keys []string
 	for key := range measurementMap {
 		keys = append(keys, key)
@@ -63,13 +101,10 @@ func buildMeasurementMap(title string, measurementMap map[string][]*recorder.Mea
 
 	// |QPS  |10:01|10:02|10:02|10:03|10:03|10:03|
 	buf.WriteByte('|')
-	buf.WriteString(title)
-	for i := len(title); i < keyWidth; i++ {
-		buf.WriteByte(' ')
-	}
+	appendCenter(&buf, keyWidth, title)
 	buf.WriteByte('|')
 	for _, measurements := range measurementMap[keys[0]] {
-		buf.WriteString(measurements.Time.Format("04:05"))
+		appendCenter(&buf, valueWidth, measurements.Time.Format("04:05"))
 		buf.WriteByte('|')
 	}
 	buf.WriteByte('\n')
@@ -81,7 +116,7 @@ func buildMeasurementMap(title string, measurementMap map[string][]*recorder.Mea
 	}
 	buf.WriteByte('|')
 	for range measurementMap[keys[0]] {
-		buf.WriteString("-----")
+		buf.WriteString("---------")
 		buf.WriteByte('|')
 	}
 	buf.WriteByte('\n')
@@ -89,13 +124,10 @@ func buildMeasurementMap(title string, measurementMap map[string][]*recorder.Mea
 	// |QPS  |10:01|10:02|10:02|10:03|10:03|10:03|
 	for _, key := range keys {
 		buf.WriteByte('|')
-		buf.WriteString(key)
-		for i := len(key); i < keyWidth; i++ {
-			buf.WriteByte(' ')
-		}
+		appendCenter(&buf, keyWidth, key)
 		buf.WriteByte('|')
 		for _, measurement := range measurementMap[key] {
-			buf.WriteString(fmt.Sprintf("%.1f", measurement.Value))
+			appendCenter(&buf, valueWidth, fmt.Sprintf("%.1f", measurement.Value))
 			buf.WriteByte('|')
 		}
 		buf.WriteByte('\n')

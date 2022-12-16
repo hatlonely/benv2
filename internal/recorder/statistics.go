@@ -68,67 +68,84 @@ func (s *Statistics) calculate(aggregationMap map[string][]*Aggregation) (*Metri
 	errCodeDistributionMap := map[string]map[string]int{}
 
 	for key, aggregations := range aggregationMap {
-		var summary Summary
-		totalResTime := time.Duration(0)
-		// 丢弃最后一次结果
-		for i := 0; i < len(aggregations)-1; i++ {
-			summary.Total += aggregations[i].Total
-			summary.Pass += aggregations[i].Pass
-			totalResTime += aggregations[i].PassResTime
-		}
-		summary.QPS = float64(summary.Pass) / aggregations[len(aggregations)-1].Time.Sub(aggregations[0].Time).Seconds()
-		summary.AvgResTimeMs = float64(totalResTime.Milliseconds()) / float64(summary.Pass)
-		summary.SuccessRatePercent = float64(summary.Pass*100) / float64(summary.Total)
-		summaryMap[key] = &summary
-
-		qps := make([]*Measurement, 0, len(aggregations))
-		for _, aggregation := range aggregations {
-			qps = append(qps, &Measurement{
-				Time:  aggregation.Time,
-				Value: float64(aggregation.Pass) / aggregation.Duration.Seconds(),
-			})
-		}
-		qpsMap[key] = qps
-
-		avgResTimeMs := make([]*Measurement, 0, len(aggregations))
-		for _, aggregation := range aggregations {
-			if aggregation.Pass == 0 {
-				continue
-			}
-			avgResTimeMs = append(avgResTimeMs, &Measurement{
-				Time:  aggregation.Time,
-				Value: float64(aggregation.PassResTime.Milliseconds()) / float64(aggregation.Pass),
-			})
-		}
-		avgResTimeMsMap[key] = avgResTimeMs
-
-		successRatePercent := make([]*Measurement, 0, len(aggregations))
-		for _, aggregation := range aggregations {
-			if aggregation.Total == 0 {
-				continue
-			}
-			successRatePercent = append(successRatePercent, &Measurement{
-				Time:  aggregation.Time,
-				Value: float64(aggregation.Pass*100) / float64(aggregation.Total),
-			})
-		}
-		successRatePercentMap[key] = successRatePercent
-
-		errCodeDistribution := map[string]int{}
-		for _, aggregation := range aggregations {
-			for key, val := range aggregation.ErrCode {
-				errCodeDistribution[key] += val
-			}
-		}
-		errCodeDistributionMap[key] = errCodeDistribution
+		summaryMap[key] = calculateSummary(aggregations)
+		qpsMap[key] = calculateQPS(aggregations)
+		avgResTimeMsMap[key] = calculateAvgResTimeMs(aggregations)
+		successRatePercentMap[key] = calculateSuccessRatePercent(aggregations)
+		errCodeDistributionMap[key] = calculateErrCodeDistribution(aggregations)
 	}
 
 	return &Metric{
+		Summary:             summaryMap,
 		QPS:                 qpsMap,
 		AvgResTimeMs:        avgResTimeMsMap,
 		SuccessRatePercent:  successRatePercentMap,
 		ErrCodeDistribution: errCodeDistributionMap,
 	}, nil
+}
+
+func calculateSummary(aggregations []*Aggregation) *Summary {
+	var summary Summary
+	totalResTime := time.Duration(0)
+	// 丢弃最后一次结果
+	for i := 0; i < len(aggregations)-1; i++ {
+		summary.Total += aggregations[i].Total
+		summary.Pass += aggregations[i].Pass
+		totalResTime += aggregations[i].PassResTime
+	}
+	summary.QPS = float64(summary.Pass) / aggregations[len(aggregations)-1].Time.Sub(aggregations[0].Time).Seconds()
+	summary.AvgResTimeMs = float64(totalResTime.Milliseconds()) / float64(summary.Pass)
+	summary.SuccessRatePercent = float64(summary.Pass*100) / float64(summary.Total)
+	return &summary
+}
+
+func calculateQPS(aggregations []*Aggregation) []*Measurement {
+	qps := make([]*Measurement, 0, len(aggregations))
+	for _, aggregation := range aggregations {
+		qps = append(qps, &Measurement{
+			Time:  aggregation.Time,
+			Value: float64(aggregation.Pass) / aggregation.Duration.Seconds(),
+		})
+	}
+	return qps
+}
+
+func calculateAvgResTimeMs(aggregations []*Aggregation) []*Measurement {
+	avgResTimeMs := make([]*Measurement, 0, len(aggregations))
+	for _, aggregation := range aggregations {
+		if aggregation.Pass == 0 {
+			continue
+		}
+		avgResTimeMs = append(avgResTimeMs, &Measurement{
+			Time:  aggregation.Time,
+			Value: float64(aggregation.PassResTime.Milliseconds()) / float64(aggregation.Pass),
+		})
+	}
+	return avgResTimeMs
+}
+
+func calculateSuccessRatePercent(aggregations []*Aggregation) []*Measurement {
+	successRatePercent := make([]*Measurement, 0, len(aggregations))
+	for _, aggregation := range aggregations {
+		if aggregation.Total == 0 {
+			continue
+		}
+		successRatePercent = append(successRatePercent, &Measurement{
+			Time:  aggregation.Time,
+			Value: float64(aggregation.Pass*100) / float64(aggregation.Total),
+		})
+	}
+	return successRatePercent
+}
+
+func calculateErrCodeDistribution(aggregations []*Aggregation) map[string]int {
+	errCodeDistribution := map[string]int{}
+	for _, aggregation := range aggregations {
+		for key, val := range aggregation.ErrCode {
+			errCodeDistribution[key] += val
+		}
+	}
+	return errCodeDistribution
 }
 
 type Aggregation struct {
