@@ -38,6 +38,8 @@ plan:
     - name: unit1
       step:
         - ctx: sh
+          success: res.Stdout == "val1 val2"
+          errCode: res.Stdout
           req:
             Command: echo -n ${KEY1} ${KEY2}
             Envs:

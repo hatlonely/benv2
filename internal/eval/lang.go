@@ -10,7 +10,7 @@ import (
 	"github.com/hatlonely/go-kit/cast"
 )
 
-var lang = gval.NewLanguage(
+var Lang = gval.NewLanguage(
 	gval.Arithmetic(),
 	gval.Bitmask(),
 	gval.Text(),

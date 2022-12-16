@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PaesslerAG/gval"
 	"github.com/hatlonely/go-kit/refx"
 	"github.com/pkg/errors"
 
@@ -28,8 +29,10 @@ type Options struct {
 		Unit     []struct {
 			Name string
 			Step []*struct {
-				Ctx string
-				Req interface{}
+				Ctx     string
+				Req     interface{}
+				ErrCode string
+				Success string
 			}
 		}
 	}
@@ -65,13 +68,29 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 	for _, unitDesc := range options.Plan.Unit {
 		var step []*StepInfo
 		for _, stepDesc := range unitDesc.Step {
-			e, err := eval.NewEvaluable(stepDesc.Req)
+			reqEval, err := eval.NewEvaluable(stepDesc.Req)
 			if err != nil {
 				return nil, errors.WithMessage(err, "eval.NewEvaluable failed")
 			}
+			var errCodeEval gval.Evaluable
+			if stepDesc.ErrCode != "" {
+				errCodeEval, err = eval.Lang.NewEvaluable(stepDesc.ErrCode)
+				if err != nil {
+					return nil, errors.WithMessage(err, "eval.NewEvaluable failed")
+				}
+			}
+			var successEval gval.Evaluable
+			if stepDesc.Success != "" {
+				successEval, err = eval.Lang.NewEvaluable(stepDesc.Success)
+				if err != nil {
+					return nil, errors.WithMessage(err, "eval.NewEvaluable failed")
+				}
+			}
 			step = append(step, &StepInfo{
-				Ctx: stepDesc.Ctx,
-				Req: e,
+				Ctx:     stepDesc.Ctx,
+				Req:     reqEval,
+				ErrCode: errCodeEval,
+				Success: successEval,
 			})
 		}
 		plan.Unit = append(plan.Unit, &UnitInfo{
@@ -141,8 +160,10 @@ type UnitInfo struct {
 }
 
 type StepInfo struct {
-	Ctx string
-	Req *eval.Evaluable
+	Ctx     string
+	Req     *eval.Evaluable
+	ErrCode gval.Evaluable
+	Success gval.Evaluable
 }
 
 func (fw *Framework) Run() error {
@@ -182,15 +203,17 @@ func (fw *Framework) Run() error {
 							break out
 						default:
 							stat, err := fw.RunUnit(unit)
-							stat.Seq = idx
 							if err != nil {
 								fmt.Println(err)
 								cancel()
+								break
 							}
+							stat.Seq = idx
 							err = fw.recorder.Record(stat)
 							if err != nil {
 								fmt.Println(err)
 								cancel()
+								break
 							}
 						}
 					}
@@ -255,11 +278,38 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 		}
 
 		stepStart := time.Now()
-		res, err := d.Do(req)
+		var res interface{}
+		res, err = d.Do(req)
 		stepResTime = time.Since(stepStart)
 		if err != nil {
 			err = errors.WithMessage(err, "driver.Do failed")
 			break
+		}
+
+		errCode := ""
+		if step.Success != nil {
+			success, e := step.Success.EvalBool(context.Background(), map[string]interface{}{
+				"res": res,
+			})
+			if e != nil {
+				return nil, errors.WithMessage(err, "step.Success.Evaluate failed")
+			}
+			if !ok {
+				return nil, errors.Errorf("success should be a bool condition")
+			}
+			if !success {
+				if step.ErrCode == nil {
+					errCode = "Fail"
+				} else {
+					errCodeV, e := step.ErrCode(context.Background(), map[string]interface{}{
+						"res": res,
+					})
+					if e != nil {
+						return nil, errors.WithMessage(err, "step.ErrCode.Evaluate failed")
+					}
+					errCode = fmt.Sprintf("%v", errCodeV)
+				}
+			}
 		}
 
 		unitStat.Step = append(unitStat.Step, &recorder.StepStat{
@@ -268,7 +318,15 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 			Res:     res,
 			Err:     nil,
 			ResTime: stepResTime,
+			ErrCode: errCode,
 		})
+
+		if errCode != "" {
+			unitStat.ErrCode = errCode
+			unitStat.ResTime = time.Since(unitStart)
+			unitStat.Time = time.Now().Format(time.RFC3339Nano)
+			return unitStat, nil
+		}
 	}
 
 	if err != nil {

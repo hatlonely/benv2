@@ -50,9 +50,9 @@ func NewEvaluable(v interface{}) (*Evaluable, error) {
 			if !ok {
 				return errors.Errorf("expression should be string. key: [%s]", key)
 			}
-			e, err := lang.NewEvaluable(expr)
+			e, err := Lang.NewEvaluable(expr)
 			if err != nil {
-				return errors.Wrap(err, "lang.NewEvaluable failed")
+				return errors.Wrap(err, "Lang.NewEvaluable failed")
 			}
 
 			ev.variables[key[0:idx+1]+key[idx+2:]] = e
