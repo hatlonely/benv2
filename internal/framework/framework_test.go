@@ -83,7 +83,7 @@ statistics:
   pointNumber: 10
 
 reporter:
-  type: Text
+  type: Json
   options:
     valueWidth: 9
 `
