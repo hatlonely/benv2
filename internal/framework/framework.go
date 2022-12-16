@@ -6,13 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hatlonely/go-kit/refx"
+	"github.com/pkg/errors"
+
 	"github.com/hatlonely/benv2/internal/driver"
 	"github.com/hatlonely/benv2/internal/eval"
 	"github.com/hatlonely/benv2/internal/recorder"
 	"github.com/hatlonely/benv2/internal/reporter"
 	"github.com/hatlonely/benv2/internal/source"
-	"github.com/hatlonely/go-kit/refx"
-	"github.com/pkg/errors"
 )
 
 type Options struct {
@@ -22,6 +23,7 @@ type Options struct {
 	Source map[string]refx.TypeOptions
 	Plan   struct {
 		Duration time.Duration
+		Interval time.Duration
 		Parallel []map[string]int
 		Unit     []struct {
 			Name string
@@ -57,6 +59,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 
 	plan := &PlanInfo{
 		Duration: options.Plan.Duration,
+		Interval: options.Plan.Interval,
 		Parallel: options.Plan.Parallel,
 	}
 	for _, unitDesc := range options.Plan.Unit {
@@ -127,6 +130,7 @@ type Framework struct {
 
 type PlanInfo struct {
 	Duration time.Duration
+	Interval time.Duration
 	Parallel []map[string]int
 	Unit     []*UnitInfo
 }
@@ -142,15 +146,21 @@ type StepInfo struct {
 }
 
 func (fw *Framework) Run() error {
-	if err := fw.recorder.RecordMeta(&recorder.Meta{
+	meta := &recorder.Meta{
 		ID:       fw.id,
 		Name:     fw.name,
 		Parallel: fw.plan.Parallel,
-	}); err != nil {
-		return errors.WithMessage(err, "recorder.RecordMeta failed")
+		Duration: fw.plan.Duration,
 	}
 
+	startTime := time.Now().Add(time.Second)
+
 	for idx, parallelMap := range fw.plan.Parallel {
+		meta.TimeRange = append(meta.TimeRange, &recorder.TimeRange{
+			StartTime: startTime,
+			EndTime:   startTime.Add(fw.plan.Duration),
+		})
+
 		var wg sync.WaitGroup
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, unit := range fw.plan.Unit {
@@ -161,6 +171,7 @@ func (fw *Framework) Run() error {
 			for i := 0; i < parallel; i++ {
 				wg.Add(1)
 				go func(unit *UnitInfo, idx int) {
+					time.Sleep(time.Until(startTime))
 					deadline := time.After(fw.plan.Duration)
 				out:
 					for {
@@ -189,6 +200,12 @@ func (fw *Framework) Run() error {
 		}
 		wg.Wait()
 		cancel()
+
+		startTime = startTime.Add(fw.plan.Duration + fw.plan.Interval)
+	}
+
+	if err := fw.recorder.RecordMeta(meta); err != nil {
+		return errors.WithMessage(err, "recorder.RecordMeta failed")
 	}
 
 	_ = fw.recorder.Close()

@@ -2,7 +2,6 @@ package recorder
 
 import (
 	"reflect"
-	"time"
 
 	"github.com/hatlonely/go-kit/refx"
 	"github.com/pkg/errors"
@@ -26,7 +25,7 @@ func NewAnalystWithOptions(options *refx.TypeOptions, opts ...refx.Option) (Anal
 
 type Analyst interface {
 	Meta() (*Meta, error)
-	TimeRange() (time.Time, time.Time, error)
+	//TimeRange() ([]*TimeRange, error)
 	UnitStatStream(id string) (StatStream, error)
 }
 

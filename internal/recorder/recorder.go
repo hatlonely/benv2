@@ -30,14 +30,17 @@ type Recorder interface {
 	Close() error
 }
 
+type TimeRange struct {
+	StartTime time.Time
+	EndTime   time.Time
+}
+
 type Meta struct {
 	ID        string
 	Name      string
+	Duration  time.Duration
 	Parallel  []map[string]int
-	TimeRange []*struct {
-		StartTime time.Time
-		EndTime   time.Time
-	}
+	TimeRange []*TimeRange
 }
 
 type UnitStat struct {

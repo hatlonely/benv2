@@ -9,6 +9,6 @@ require (
 	github.com/hatlonely/go-kit v1.1.6
 	github.com/json-iterator/go v1.1.10
 	github.com/pkg/errors v0.9.1
-	github.com/satori/go.uuid v1.2.0
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/smartystreets/goconvey v1.7.2
 )

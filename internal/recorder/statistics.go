@@ -119,17 +119,17 @@ type Aggregation struct {
 }
 
 func (s *Statistics) aggregation(id string, analyst Analyst) ([]map[string][]*Aggregation, error) {
-	st, et, err := analyst.TimeRange()
-	et = et.Add(1) // 边界处理
+	meta, err := analyst.Meta()
 	if err != nil {
 		return nil, errors.WithMessage(err, "analyst.TimeRange")
 	}
+
 	interval := s.options.Interval
 	if s.options.Interval == 0 {
 		if s.options.PointNumber == 0 {
 			s.options.PointNumber = 100
 		}
-		interval = et.Sub(st) / time.Duration(s.options.PointNumber)
+		interval = meta.Duration / time.Duration(s.options.PointNumber)
 	}
 
 	aggregationIdxMap := map[int]map[string][]*Aggregation{}
@@ -152,7 +152,9 @@ func (s *Statistics) aggregation(id string, analyst Analyst) ([]map[string][]*Ag
 		if err != nil {
 			return nil, errors.WithMessage(err, "time.Parse failed")
 		}
-		idx := t.Sub(st) / interval
+
+		timeRange := meta.TimeRange[stat.Seq]
+		idx := int(t.Sub(timeRange.StartTime) / interval)
 
 		aggregationMap, ok := aggregationIdxMap[stat.Seq]
 		if !ok {
@@ -161,7 +163,7 @@ func (s *Statistics) aggregation(id string, analyst Analyst) ([]map[string][]*Ag
 		}
 		if _, ok := aggregationMap[stat.Name]; !ok {
 			var aggregations []*Aggregation
-			for i := st; i.Before(et); i = i.Add(interval) {
+			for i := timeRange.StartTime; i.Before(timeRange.EndTime.Add(interval)); i = i.Add(interval) {
 				aggregations = append(aggregations, &Aggregation{
 					Time:     i,
 					Duration: interval,
@@ -169,6 +171,9 @@ func (s *Statistics) aggregation(id string, analyst Analyst) ([]map[string][]*Ag
 				})
 			}
 			aggregationMap[stat.Name] = aggregations
+		}
+		if idx >= len(aggregationMap[stat.Name]) {
+			idx = len(aggregationMap[stat.Name])
 		}
 
 		aggregation := aggregationMap[stat.Name][idx]
