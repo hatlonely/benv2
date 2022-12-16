@@ -65,6 +65,8 @@ statistics:
 
 reporter:
   type: Text
+  options:
+    valueWidth: 9
 `
 
 func TestFramework_RunPlan(t *testing.T) {

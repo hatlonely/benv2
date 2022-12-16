@@ -1,8 +1,9 @@
 package reporter
 
 import (
-	"github.com/hatlonely/benv2/internal/recorder"
 	"github.com/hatlonely/go-kit/strx"
+
+	"github.com/hatlonely/benv2/internal/recorder"
 )
 
 type JsonReporter struct{}

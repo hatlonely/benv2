@@ -11,20 +11,33 @@ import (
 	"github.com/hatlonely/benv2/internal/recorder"
 )
 
-type TextReporter struct{}
+type TextReporterOptions struct {
+	TitleWidth int `dft:"20"`
+	ValueWidth int `dft:"9"`
+}
+
+func NewTextReporterWithOptions(options *TextReporterOptions) *TextReporter {
+	return &TextReporter{
+		options: options,
+	}
+}
+
+type TextReporter struct {
+	options *TextReporterOptions
+}
 
 func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) string {
 	var buf bytes.Buffer
 
 	for i := range metrics {
-		buf.WriteString(buildUnit(meta.Parallel[i], metrics[i]))
+		buf.WriteString(r.buildUnit(meta.Parallel[i], metrics[i]))
 		buf.WriteString("==================================================================================\n")
 	}
 
 	return buf.String()
 }
 
-func buildUnit(parallel map[string]int, metric *recorder.Metric) string {
+func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metric) string {
 	var buf bytes.Buffer
 
 	buf.WriteString(buildParallel(parallel))
@@ -32,11 +45,11 @@ func buildUnit(parallel map[string]int, metric *recorder.Metric) string {
 
 	buf.WriteString(buildErrCodeDistribution(metric.ErrCodeDistribution))
 	buf.WriteByte('\n')
-	buf.WriteString(buildMeasurementMap(20, 9, "QPS", metric.QPS))
+	buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, "QPS", metric.QPS))
 	buf.WriteByte('\n')
-	buf.WriteString(buildMeasurementMap(20, 9, "AvgResTimeMs", metric.AvgResTimeMs))
+	buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, "AvgResTimeMs", metric.AvgResTimeMs))
 	buf.WriteByte('\n')
-	buf.WriteString(buildMeasurementMap(20, 9, "SuccessRatePercent", metric.SuccessRatePercent))
+	buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, "SuccessRatePercent", metric.SuccessRatePercent))
 	buf.WriteByte('\n')
 
 	return buf.String()
@@ -116,7 +129,9 @@ func buildMeasurementMap(titleWidth, valueWidth int, title string, measurementMa
 	}
 	buf.WriteByte('|')
 	for range measurementMap[keys[0]] {
-		buf.WriteString("---------")
+		for i := 0; i < valueWidth; i++ {
+			buf.WriteByte('-')
+		}
 		buf.WriteByte('|')
 	}
 	buf.WriteByte('\n')
