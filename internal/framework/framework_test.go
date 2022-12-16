@@ -33,7 +33,9 @@ plan:
   interval: 1s
   parallel:
     - unit1: 3
+      unit2: 1
     - unit1: 5
+      unit2: 2
   unit:
     - name: unit1
       step:
@@ -47,7 +49,22 @@ plan:
               "#KEY2": source.src.key2
         - ctx: sh
           req:
-            Command: echo -n ${KEY3} ${KEY4}
+            Command: echo -n ${KEY3}
+            Envs:
+              "#KEY3": stat.Step[0].Res.Stdout
+    - name: unit2
+      step:
+        - ctx: sh
+          success: res.Stdout == "val1 val2"
+          errCode: res.Stdout
+          req:
+            Command: echo -n ${KEY1} ${KEY2}
+            Envs:
+              "#KEY1": source.src.key1
+              "#KEY2": source.src.key2
+        - ctx: sh
+          req:
+            Command: echo -n ${KEY3}
             Envs:
               "#KEY3": stat.Step[0].Res.Stdout
 recorder:
