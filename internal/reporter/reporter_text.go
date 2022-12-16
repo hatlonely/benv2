@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hatlonely/go-kit/strx"
+	"github.com/spf13/cast"
 
 	"github.com/hatlonely/benv2/internal/recorder"
 )
@@ -43,6 +44,9 @@ func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metri
 	buf.WriteString(buildParallel(parallel))
 	buf.WriteByte('\n')
 
+	buf.WriteString(buildSummary(r.options.TitleWidth, metric.Summary))
+	buf.WriteByte('\n')
+
 	buf.WriteString(buildErrCodeDistribution(metric.ErrCodeDistribution))
 	buf.WriteByte('\n')
 	buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, "QPS", metric.QPS))
@@ -67,7 +71,68 @@ func buildParallel(parallel map[string]int) string {
 		parallels = append(parallels, fmt.Sprintf("%s: %d", key, parallel[key]))
 	}
 
-	return strings.Join(parallels, ",") + "\n"
+	return strings.Join(parallels, ", ") + "\n"
+}
+
+func buildSummary(titleWidth int, summaryMap map[string]*recorder.Summary) string {
+	var buf bytes.Buffer
+
+	width := titleWidth
+	if width < len("summary") {
+		width = len("summary")
+	}
+	var keys []string
+	for key := range summaryMap {
+		keys = append(keys, key)
+		if len(key) > width {
+			width = len(key)
+		}
+	}
+	sort.Strings(keys)
+
+	titles := []string{
+		"    Total    ",
+		"     QPS     ",
+		"AvgResTimeMs",
+		"SuccessRatePercent",
+	}
+	buf.WriteByte('|')
+	appendCenter(&buf, width, "summary")
+	buf.WriteByte('|')
+	for _, title := range titles {
+		appendCenter(&buf, len(title)+2, title)
+		buf.WriteByte('|')
+	}
+	buf.WriteByte('\n')
+	buf.WriteByte('|')
+	for i := 0; i < width; i++ {
+		buf.WriteByte('-')
+	}
+	buf.WriteByte('|')
+	for _, title := range titles {
+		for i := 0; i < len(title)+2; i++ {
+			buf.WriteByte('-')
+		}
+		buf.WriteByte('|')
+	}
+	buf.WriteByte('\n')
+
+	for _, key := range keys {
+		buf.WriteByte('|')
+		appendCenter(&buf, width, key)
+		buf.WriteByte('|')
+		appendCenter(&buf, len(titles[0])+2, cast.ToString(summaryMap[key].Total))
+		buf.WriteByte('|')
+		appendCenter(&buf, len(titles[1])+2, fmt.Sprintf("%.2f", summaryMap[key].QPS))
+		buf.WriteByte('|')
+		appendCenter(&buf, len(titles[2])+2, fmt.Sprintf("%.2f", summaryMap[key].AvgResTimeMs))
+		buf.WriteByte('|')
+		appendCenter(&buf, len(titles[3])+2, fmt.Sprintf("%.2f", summaryMap[key].SuccessRatePercent))
+		buf.WriteByte('|')
+		buf.WriteByte('\n')
+	}
+
+	return buf.String()
 }
 
 func buildErrCodeDistribution(errCodeDistribution map[string]map[string]int) string {
@@ -142,7 +207,7 @@ func buildMeasurementMap(titleWidth, valueWidth int, title string, measurementMa
 		appendCenter(&buf, keyWidth, key)
 		buf.WriteByte('|')
 		for _, measurement := range measurementMap[key] {
-			appendCenter(&buf, valueWidth, fmt.Sprintf("%.1f", measurement.Value))
+			appendCenter(&buf, valueWidth, fmt.Sprintf("%.2f", measurement.Value))
 			buf.WriteByte('|')
 		}
 		buf.WriteByte('\n')

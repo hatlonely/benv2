@@ -80,7 +80,7 @@ analyst:
     metaPath: meta.json
 
 statistics:
-  pointNumber: 5
+  pointNumber: 10
 
 reporter:
   type: Text
