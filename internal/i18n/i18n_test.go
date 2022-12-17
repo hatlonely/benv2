@@ -12,8 +12,8 @@ func TestI18n(t *testing.T) {
 	Convey("TestI18n", t, func() {
 		i18n := &I18n{
 			Title: Title{
-				Report:  "test-report",
-				Summary: "test-summary",
+				Report: "test-report",
+				Unit:   "test-summary",
 			},
 			Tooltip: Tooltip{
 				Save: "test-save",

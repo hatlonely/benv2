@@ -8,7 +8,10 @@ import (
 
 type Title struct {
 	Report              string
-	Summary             string
+	Index               string
+	Unit                string
+	Parallel            string
+	Total               string
 	QPS                 string
 	AvgResTimeMs        string
 	SuccessRatePercent  string
@@ -29,7 +32,10 @@ var defaultI18n = map[string]*I18n{
 	"dft": &I18n{
 		Title: Title{
 			Report:              "Report",
-			Summary:             "Summary",
+			Index:               "Index",
+			Parallel:            "Parallel",
+			Unit:                "Unit",
+			Total:               "Total",
 			QPS:                 "QPS",
 			AvgResTimeMs:        "AvgResTimeMs",
 			SuccessRatePercent:  "SuccessRatePercent",

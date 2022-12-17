@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/hatlonely/go-kit/refx"
@@ -708,6 +709,6 @@ func TestReporterHtml(t *testing.T) {
 			Type: "Html",
 		})
 		So(err, ShouldBeNil)
-		fmt.Println(reporter.Report(meta, metrics))
+		ioutil.WriteFile("1.html", []byte(reporter.Report(meta, metrics)), 0644)
 	})
 }

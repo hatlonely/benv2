@@ -3,7 +3,7 @@ package reporter
 import (
 	"bytes"
 	"fmt"
-	"html/template"
+	"text/template"
 
 	"github.com/hatlonely/go-kit/strx"
 	"github.com/pkg/errors"
@@ -47,6 +47,9 @@ func NewHtmlReporterWithOptions(options *HtmlReporterOptions) (*HtmlReporter, er
 		"JsonMarshalIndent": strx.JsonMarshalIndent,
 		"RenderUnit":        reporter.RenderUnit,
 		"RenderSummary":     reporter.RenderSummary,
+		"FormatFloat": func(v float64) string {
+			return fmt.Sprintf("%.2f", v)
+		},
 	}
 
 	reporter.reportTpl = template.Must(template.New("").Funcs(funcs).Parse(reportTplStr))
@@ -80,14 +83,14 @@ func (r *HtmlReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) s
 	return buf.String()
 }
 
-func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metrics []*recorder.Metric) string {
+func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metric *recorder.Metric) string {
 	var buf bytes.Buffer
 
 	if err := r.summaryTpl.Execute(&buf, map[string]interface{}{
 		"Meta":      meta,
 		"Customize": r.options,
 		"I18n":      r.i18n,
-		"Metrics":   metrics,
+		"Metric":    metric,
 	}); err != nil {
 		return fmt.Sprintf("%+v", errors.Wrap(err, "summaryTpl.Execute failed"))
 	}
@@ -95,14 +98,14 @@ func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metrics []*recorder.Me
 	return buf.String()
 }
 
-func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, metrics []*recorder.Metric) string {
+func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, metric *recorder.Metric) string {
 	var buf bytes.Buffer
 
 	if err := r.unitTpl.Execute(&buf, map[string]interface{}{
 		"Meta":      meta,
 		"Customize": r.options,
 		"I18n":      r.i18n,
-		"Metrics":   metrics,
+		"Metric":    metric,
 	}); err != nil {
 		return fmt.Sprintf("%+v", errors.Wrap(err, "unitTpl.Execute failed"))
 	}
@@ -169,13 +172,42 @@ var reportTplStr = `<!DOCTYPE html>
 
 <body>
     {{ .Customize.Extra.BodyHeader }}
+
     <div class="container">
         <div class="row justify-content-md-center">
-            <div class="col-lg-10 col-md-12">
-            {{ RenderUnit .Meta .Metrics }}
-            </div>
+			<div class="col-md-12" id={{ .Meta.Name }}>
+				<table class="table table-striped">
+					<thead>
+						<tr class="text-center">
+							<th>{{ .I18n.Title.Index }}</th>
+							<th>{{ .I18n.Title.Unit }}</th>
+							<th>{{ .I18n.Title.Parallel }}</th>
+							<th>{{ .I18n.Title.Total }}</th>
+							<th>{{ .I18n.Title.QPS }}</th>
+							<th>{{ .I18n.Title.AvgResTimeMs }}</th>
+							<th>{{ .I18n.Title.SuccessRatePercent }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{ range $idx, $metric := $.Metrics }}
+						{{ range $key, $summary := $metric.Summary }}
+						<tr class="text-center">
+							<th>{{ $idx }}</th>
+							<th>{{ $key }}</th>
+							<th>{{ index (index $.Meta.Parallel $idx) $key }}</th>
+							<td>{{ $summary.Total }}</td>
+							<td>{{ $summary.QPS }}</td>
+							<td>{{ FormatFloat $summary.AvgResTimeMs }}</td>
+							<td>{{ FormatFloat $summary.SuccessRatePercent }}</td>
+						</tr>
+						{{ end }}
+						{{ end }}
+					</tbody>
+				</table>
+			</div>
         </div>
     </div>
+
     {{ .Customize.Extra.BodyFooter }}
 </body>
 <script>
@@ -187,7 +219,58 @@ var reportTplStr = `<!DOCTYPE html>
 </html>
 `
 
-var summaryTplStr = ``
+//unit1: 3, unit2: 1
+//
+//|      summary       |     Total     |      QPS      | AvgResTimeMs | SuccessRatePercent |
+//|--------------------|---------------|---------------|--------------|--------------------|
+//|       unit1        |     1338      |    133.00     |    14.48     |       49.70        |
+//|       unit2        |      444      |     45.00     |    14.52     |       50.68        |
+//
+//unit1: {"OK":668,"val3 val4":673}
+//unit2: {"OK":225,"val3 val4":220}
+//
+//|        QPS         |  27:31  |  27:31  |  27:32  |  27:32  |  27:33  |  27:33  |  27:34  |  27:34  |  27:35  |  27:35  |  27:36  |
+//|--------------------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+//|       unit1        | 138.00  | 138.00  | 144.00  | 140.00  | 126.00  | 142.00  | 128.00  | 126.00  | 124.00  | 124.00  |  6.00   |
+//|       unit2        |  52.00  |  46.00  |  52.00  |  44.00  |  42.00  |  48.00  |  42.00  |  42.00  |  38.00  |  44.00  |  0.00   |
+//
+//|    AvgResTimeMs    |  27:31  |  27:31  |  27:32  |  27:32  |  27:33  |  27:33  |  27:34  |  27:34  |  27:35  |  27:35  |  27:36  |
+//|--------------------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+//|       unit1        |  13.54  |  14.03  |  12.81  |  14.00  |  15.41  |  13.56  |  15.25  |  15.41  |  15.92  |  15.40  |  13.67  |
+//|       unit2        |  12.85  |  13.87  |  13.31  |  13.05  |  16.90  |  13.54  |  14.95  |  15.95  |  15.68  |  15.95  |
+//
+//| SuccessRatePercent |  27:31  |  27:31  |  27:32  |  27:32  |  27:33  |  27:33  |  27:34  |  27:34  |  27:35  |  27:35  |  27:36  |
+//|--------------------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+//|       unit1        |  47.59  |  50.00  |  48.32  |  50.72  |  50.81  |  48.97  |  50.79  |  50.40  |  51.67  |  48.44  | 100.00  |
+//|       unit2        |  56.52  |  50.00  |  54.17  |  47.83  |  48.84  |  52.17  |  47.73  |  50.00  |  44.19  |  55.00  |  0.00   |
+//
+
+var summaryTplStr = `
+<div class="col-md-12" id={{ .Meta.Name }}>
+	<table class="table table-striped">
+		<thead>
+			<tr class="text-center">
+				<th>{{ .I18n.Title.Unit }}</th>
+				<th>{{ .I18n.Title.Total }}</th>
+				<th>{{ .I18n.Title.QPS }}</th>
+				<th>{{ .I18n.Title.AvgResTimeMs }}</th>
+				<th>{{ .I18n.Title.SuccessRatePercent }}</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{ range $key, $summary := .Metric.Summary }}
+			<tr class="text-center">
+				<th>{{ $key }}</th>
+				<td>{{ $summary.Total }}</td>
+				<td>{{ $summary.QPS }}</td>
+				<td>{{ FormatFloat $summary.AvgResTimeMs }}</td>
+				<td>{{ FormatFloat $summary.SuccessRatePercent }}</td>
+			</tr>
+			{{ end }}
+		</tbody>
+	</table>
+</div>
+`
 
 var unitTplStr = `
 `
