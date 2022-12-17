@@ -61,6 +61,25 @@ func NewHtmlReporterWithOptions(options *HtmlReporterOptions) (*HtmlReporter, er
 			}
 			return items[:len(items)-1]
 		},
+		"EchartCodeRadius1": func(idx int, len int) int {
+			return (70/len)*idx + 15
+		},
+		"EchartCodeRadius2": func(idx int, len int) int {
+			return (70/len)*(idx+1) + 10
+		},
+		"DictToItems": func(d map[string]int) interface{} {
+			var items []map[string]interface{}
+			for k, v := range d {
+				items = append(items, map[string]interface{}{
+					"name":  k,
+					"value": v,
+				})
+			}
+			return items
+		},
+		"plusOne": func(i int) int {
+			return i + 1
+		},
 	}
 
 	reporter.reportTpl = template.Must(template.New("").Funcs(funcs).Parse(reportTplStr))
@@ -271,6 +290,60 @@ var summaryTplStr = `
 var unitTplStr = `
 <div class="col-md-12">
 	<div class="card-body d-flex justify-content-center">
+        <div class="col-md-12" id="{{ printf "%s-unit-%d-err-code-distribution" $.Meta.Name $.Idx }}" style="height: 300px;"></div>
+        <script>
+            echarts.init(document.getElementById("{{ printf "%s-unit-%d-err-code-distribution" $.Meta.Name $.Idx }}")).setOption({
+              title: {
+                text: "{{ .I18n.Title.ErrCodeDistribution }}",
+                left: "center",
+              },
+              textStyle: {
+                fontFamily: "{{ .Customize.Font.Echarts }}",
+              },
+              tooltip: {
+                trigger: "item"
+              },
+              toolbox: {
+                feature: {
+                  saveAsImage: {
+                    title: "{{ .I18n.Tooltip.Save }}"
+                  }
+                }
+              },
+              series: [
+				{{ $idx := 0 }}
+                {{ range $key, $errCodeDistribution := $.Metric.ErrCodeDistribution }}
+                {
+                  name: "{{ $key }}",
+                  type: "pie",
+                  radius: ['{{ EchartCodeRadius1 $idx (len $.Metric.ErrCodeDistribution) }}%', '{{ EchartCodeRadius2 $idx (len $.Metric.ErrCodeDistribution) }}%'],
+                  avoidLabelOverlap: false,
+                  label: {
+                    show: false,
+                    position: 'center'
+                  },
+                  emphasis: {
+                    label: {
+                      show: true,
+                      fontSize: '20',
+                      fontWeight: 'bold'
+                    }
+                  },
+                  labelLine: {
+                    show: false
+                  },
+                  data: {{ JsonMarshal (DictToItems $errCodeDistribution) }}
+                },
+				{{ $idx = plusOne $idx }}
+                {{ end }}
+              ]
+            });
+        </script>
+    </div>
+</div>
+
+<div class="col-md-12">
+	<div class="card-body d-flex justify-content-center">
         <div class="col-md-12" id="{{ printf "%s-unit-%d-qps" $.Meta.Name $.Idx }}" style="height: 300px;"></div>
         <script>
             echarts.init(document.getElementById("{{ printf "%s-unit-%d-qps" $.Meta.Name $.Idx }}")).setOption({
@@ -414,9 +487,5 @@ var unitTplStr = `
             });
         </script>
     </div>
-</div>
-
-<div class="col-md-12" id="{{ .Meta.Name }}-QPS">
-errcode
 </div>
 `
