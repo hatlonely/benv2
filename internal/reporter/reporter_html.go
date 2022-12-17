@@ -83,14 +83,14 @@ func (r *HtmlReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) s
 	return buf.String()
 }
 
-func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metric *recorder.Metric) string {
+func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metrics []*recorder.Metric) string {
 	var buf bytes.Buffer
 
 	if err := r.summaryTpl.Execute(&buf, map[string]interface{}{
 		"Meta":      meta,
 		"Customize": r.options,
 		"I18n":      r.i18n,
-		"Metric":    metric,
+		"Metrics":   metrics,
 	}); err != nil {
 		return fmt.Sprintf("%+v", errors.Wrap(err, "summaryTpl.Execute failed"))
 	}
@@ -173,38 +173,10 @@ var reportTplStr = `<!DOCTYPE html>
 <body>
     {{ .Customize.Extra.BodyHeader }}
 
+	{{/* summary */}}
     <div class="container">
         <div class="row justify-content-md-center">
-			<div class="col-md-12" id={{ .Meta.Name }}>
-				<table class="table table-striped">
-					<thead>
-						<tr class="text-center">
-							<th>{{ .I18n.Title.Index }}</th>
-							<th>{{ .I18n.Title.Unit }}</th>
-							<th>{{ .I18n.Title.Parallel }}</th>
-							<th>{{ .I18n.Title.Total }}</th>
-							<th>{{ .I18n.Title.QPS }}</th>
-							<th>{{ .I18n.Title.AvgResTimeMs }}</th>
-							<th>{{ .I18n.Title.SuccessRatePercent }}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{{ range $idx, $metric := $.Metrics }}
-						{{ range $key, $summary := $metric.Summary }}
-						<tr class="text-center">
-							<th>{{ $idx }}</th>
-							<th>{{ $key }}</th>
-							<th>{{ index (index $.Meta.Parallel $idx) $key }}</th>
-							<td>{{ $summary.Total }}</td>
-							<td>{{ $summary.QPS }}</td>
-							<td>{{ FormatFloat $summary.AvgResTimeMs }}</td>
-							<td>{{ FormatFloat $summary.SuccessRatePercent }}</td>
-						</tr>
-						{{ end }}
-						{{ end }}
-					</tbody>
-				</table>
-			</div>
+			{{ RenderSummary .Meta .Metrics }}
         </div>
     </div>
 
@@ -246,11 +218,13 @@ var reportTplStr = `<!DOCTYPE html>
 //
 
 var summaryTplStr = `
-<div class="col-md-12" id={{ .Meta.Name }}>
+<div class="col-md-12" id="{{ .Meta.Name }}-summary">
 	<table class="table table-striped">
 		<thead>
 			<tr class="text-center">
+				<th>{{ .I18n.Title.Index }}</th>
 				<th>{{ .I18n.Title.Unit }}</th>
+				<th>{{ .I18n.Title.Parallel }}</th>
 				<th>{{ .I18n.Title.Total }}</th>
 				<th>{{ .I18n.Title.QPS }}</th>
 				<th>{{ .I18n.Title.AvgResTimeMs }}</th>
@@ -258,14 +232,18 @@ var summaryTplStr = `
 			</tr>
 		</thead>
 		<tbody>
-			{{ range $key, $summary := .Metric.Summary }}
+			{{ range $idx, $metric := $.Metrics }}
+			{{ range $key, $summary := $metric.Summary }}
 			<tr class="text-center">
+				<th>{{ $idx }}</th>
 				<th>{{ $key }}</th>
+				<th>{{ index (index $.Meta.Parallel $idx) $key }}</th>
 				<td>{{ $summary.Total }}</td>
 				<td>{{ $summary.QPS }}</td>
 				<td>{{ FormatFloat $summary.AvgResTimeMs }}</td>
 				<td>{{ FormatFloat $summary.SuccessRatePercent }}</td>
 			</tr>
+			{{ end }}
 			{{ end }}
 		</tbody>
 	</table>
