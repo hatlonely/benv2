@@ -3,19 +3,52 @@ package reporter
 import (
 	"html/template"
 
+	"github.com/pkg/errors"
+
+	"github.com/hatlonely/benv2/internal/i18n"
 	"github.com/hatlonely/benv2/internal/recorder"
 )
 
 type HtmlReporterOptions struct {
+	Font struct {
+		Style   string
+		Body    string `dft:"'Roboto Condensed', sans-serif !important"`
+		Code    string `dft:"'JetBrains Mono', monospace !important"`
+		Echarts string `dft:"Roboto Condensed"`
+	}
+	Extra struct {
+		Head       string
+		BodyHeader string
+		BodyFooter string
+	}
+	Padding struct {
+		X int `dft:"2"`
+		Y int `dft:"2"`
+	}
+	I18n i18n.Options
 }
 
-func NewHtmlReporterWithOptions(options *HtmlReporterOptions) *HtmlReporter {
-	return &HtmlReporter{
-		options: options,
+func NewHtmlReporterWithOptions(options *HtmlReporterOptions) (*HtmlReporter, error) {
+	i18n_, err := i18n.NewI18nWithOptions(&options.I18n)
+	if err != nil {
+		return nil, errors.WithMessage(err, "i18n.NewI18nWithOptions failed")
 	}
+
+	funcs := template.FuncMap{
+		"RenderTest": func() {},
+	}
+
+	reportTpl := template.Must(template.New("").Funcs(funcs).Parse(reportTplStr))
+
+	return &HtmlReporter{
+		i18n:      i18n_,
+		options:   options,
+		reportTpl: reportTpl,
+	}, nil
 }
 
 type HtmlReporter struct {
+	i18n    *i18n.I18n
 	options *HtmlReporterOptions
 
 	reportTpl *template.Template
@@ -25,7 +58,7 @@ func (r *HtmlReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) s
 	return "html"
 }
 
-var reportTpl = `<!DOCTYPE html>
+var reportTplStr = `<!DOCTYPE html>
 <html lang="zh-cmn-Hans">
 <head>
     <title>{{ .Test.Name }} {{ .I18n.Title.Report }}</title>
