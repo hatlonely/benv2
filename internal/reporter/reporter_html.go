@@ -1,8 +1,11 @@
 package reporter
 
 import (
+	"bytes"
+	"fmt"
 	"html/template"
 
+	"github.com/hatlonely/go-kit/strx"
 	"github.com/pkg/errors"
 
 	"github.com/hatlonely/benv2/internal/i18n"
@@ -34,28 +37,77 @@ func NewHtmlReporterWithOptions(options *HtmlReporterOptions) (*HtmlReporter, er
 		return nil, errors.WithMessage(err, "i18n.NewI18nWithOptions failed")
 	}
 
-	funcs := template.FuncMap{
-		"RenderTest": func() {},
+	reporter := &HtmlReporter{
+		i18n:    i18n_,
+		options: options,
 	}
 
-	reportTpl := template.Must(template.New("").Funcs(funcs).Parse(reportTplStr))
+	funcs := template.FuncMap{
+		"JsonMarshal":       strx.JsonMarshal,
+		"JsonMarshalIndent": strx.JsonMarshalIndent,
+		"RenderUnit":        reporter.RenderUnit,
+		"RenderSummary":     reporter.RenderSummary,
+	}
 
-	return &HtmlReporter{
-		i18n:      i18n_,
-		options:   options,
-		reportTpl: reportTpl,
-	}, nil
+	reporter.reportTpl = template.Must(template.New("").Funcs(funcs).Parse(reportTplStr))
+	reporter.summaryTpl = template.Must(template.New("").Funcs(funcs).Parse(summaryTplStr))
+	reporter.unitTpl = template.Must(template.New("").Funcs(funcs).Parse(unitTplStr))
+
+	return reporter, nil
 }
 
 type HtmlReporter struct {
 	i18n    *i18n.I18n
 	options *HtmlReporterOptions
 
-	reportTpl *template.Template
+	reportTpl  *template.Template
+	summaryTpl *template.Template
+	unitTpl    *template.Template
 }
 
 func (r *HtmlReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) string {
-	return "html"
+	var buf bytes.Buffer
+
+	if err := r.reportTpl.Execute(&buf, map[string]interface{}{
+		"Meta":      meta,
+		"Customize": r.options,
+		"I18n":      r.i18n,
+		"Metrics":   metrics,
+	}); err != nil {
+		return fmt.Sprintf("%+v", errors.Wrap(err, "reportTpl.Execute failed"))
+	}
+
+	return buf.String()
+}
+
+func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metrics []*recorder.Metric) string {
+	var buf bytes.Buffer
+
+	if err := r.summaryTpl.Execute(&buf, map[string]interface{}{
+		"Meta":      meta,
+		"Customize": r.options,
+		"I18n":      r.i18n,
+		"Metrics":   metrics,
+	}); err != nil {
+		return fmt.Sprintf("%+v", errors.Wrap(err, "summaryTpl.Execute failed"))
+	}
+
+	return buf.String()
+}
+
+func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, metrics []*recorder.Metric) string {
+	var buf bytes.Buffer
+
+	if err := r.unitTpl.Execute(&buf, map[string]interface{}{
+		"Meta":      meta,
+		"Customize": r.options,
+		"I18n":      r.i18n,
+		"Metrics":   metrics,
+	}); err != nil {
+		return fmt.Sprintf("%+v", errors.Wrap(err, "unitTpl.Execute failed"))
+	}
+
+	return buf.String()
 }
 
 var reportTplStr = `<!DOCTYPE html>
@@ -120,7 +172,7 @@ var reportTplStr = `<!DOCTYPE html>
     <div class="container">
         <div class="row justify-content-md-center">
             <div class="col-lg-10 col-md-12">
-            {{ RenderTest .Test "test" }}
+            {{ RenderUnit .Meta .Metrics }}
             </div>
         </div>
     </div>
@@ -133,4 +185,9 @@ var reportTplStr = `<!DOCTYPE html>
     })
 </script>
 </html>
+`
+
+var summaryTplStr = ``
+
+var unitTplStr = `
 `
