@@ -269,7 +269,7 @@ var summaryTplStr = `
 `
 
 var unitTplStr = `
-<div class="col-md-12" id="{{ $.Meta.Name }}-QPS">
+<div class="col-md-12">
 	<div class="card-body d-flex justify-content-center">
         <div class="col-md-12" id="{{ printf "%s-unit-%d-qps" $.Meta.Name $.Idx }}" style="height: 300px;"></div>
         <script>
@@ -318,12 +318,102 @@ var unitTplStr = `
     </div>
 </div>
 
-<div class="col-md-12" id="{{ .Meta.Name }}-QPS">
-avg
+<div class="col-md-12">
+	<div class="card-body d-flex justify-content-center">
+        <div class="col-md-12" id="{{ printf "%s-unit-%d-avg-res-time-ms" $.Meta.Name $.Idx }}" style="height: 300px;"></div>
+        <script>
+            echarts.init(document.getElementById("{{ printf "%s-unit-%d-avg-res-time-ms" $.Meta.Name $.Idx }}")).setOption({
+              title: {
+                text: "{{ .I18n.Title.AvgResTimeMs }}",
+                left: "center",
+              },
+              textStyle: {
+                fontFamily: "{{ .Customize.Font.Echarts }}",
+              },
+              tooltip: {
+                trigger: 'axis',
+                show: true,
+                axisPointer: {
+                    type: "cross"
+                }
+              },
+              toolbox: {
+                feature: {
+                  saveAsImage: {
+                    title: "{{ .I18n.Tooltip.Save }}"
+                  }
+                }
+              },
+              xAxis: {
+                type: "time",
+              },
+              yAxis: {
+                type: "value",
+              },
+              series: [
+                {{ range $key, $measurement := $.Metric.AvgResTimeMs }}
+                {
+                  name: "{{ $key }}",
+                  type: "line",
+                  smooth: true,
+                  symbol: "none",
+                  areaStyle: {},
+                  data: {{ JsonMarshal (MeasurementToSerial $measurement) }}
+                },
+                {{ end }}
+              ]
+            });
+        </script>
+    </div>
 </div>
 
-<div class="col-md-12" id="{{ .Meta.Name }}-QPS">
-rate
+<div class="col-md-12">
+	<div class="card-body d-flex justify-content-center">
+        <div class="col-md-12" id="{{ printf "%s-unit-%d-success-rate-percent" $.Meta.Name $.Idx }}" style="height: 300px;"></div>
+        <script>
+            echarts.init(document.getElementById("{{ printf "%s-unit-%d-success-rate-percent" $.Meta.Name $.Idx }}")).setOption({
+              title: {
+                text: "{{ .I18n.Title.SuccessRatePercent }}",
+                left: "center",
+              },
+              textStyle: {
+                fontFamily: "{{ .Customize.Font.Echarts }}",
+              },
+              tooltip: {
+                trigger: 'axis',
+                show: true,
+                axisPointer: {
+                    type: "cross"
+                }
+              },
+              toolbox: {
+                feature: {
+                  saveAsImage: {
+                    title: "{{ .I18n.Tooltip.Save }}"
+                  }
+                }
+              },
+              xAxis: {
+                type: "time",
+              },
+              yAxis: {
+                type: "value",
+              },
+              series: [
+                {{ range $key, $measurement := $.Metric.SuccessRatePercent }}
+                {
+                  name: "{{ $key }}",
+                  type: "line",
+                  smooth: true,
+                  symbol: "none",
+                  areaStyle: {},
+                  data: {{ JsonMarshal (MeasurementToSerial $measurement) }}
+                },
+                {{ end }}
+              ]
+            });
+        </script>
+    </div>
 </div>
 
 <div class="col-md-12" id="{{ .Meta.Name }}-QPS">
