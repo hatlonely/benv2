@@ -3,7 +3,9 @@ package reporter
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"text/template"
+	"time"
 
 	"github.com/hatlonely/go-kit/strx"
 	"github.com/pkg/errors"
@@ -49,6 +51,15 @@ func NewHtmlReporterWithOptions(options *HtmlReporterOptions) (*HtmlReporter, er
 		"RenderSummary":     reporter.RenderSummary,
 		"FormatFloat": func(v float64) string {
 			return fmt.Sprintf("%.2f", v)
+		},
+		"MeasurementToSerial": func(measurements []*recorder.Measurement) [][]interface{} {
+			var items [][]interface{}
+			for _, measurement := range measurements {
+				items = append(items, []interface{}{
+					measurement.Time.Format(time.RFC3339Nano), math.Round(measurement.Value*100) / 100,
+				})
+			}
+			return items[:len(items)-1]
 		},
 	}
 
@@ -98,7 +109,7 @@ func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metrics []*recorder.Me
 	return buf.String()
 }
 
-func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, metric *recorder.Metric) string {
+func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, idx int, metric *recorder.Metric) string {
 	var buf bytes.Buffer
 
 	if err := r.unitTpl.Execute(&buf, map[string]interface{}{
@@ -106,6 +117,7 @@ func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, metric *recorder.Metric) 
 		"Customize": r.options,
 		"I18n":      r.i18n,
 		"Metric":    metric,
+		"Idx":       idx,
 	}); err != nil {
 		return fmt.Sprintf("%+v", errors.Wrap(err, "unitTpl.Execute failed"))
 	}
@@ -176,7 +188,13 @@ var reportTplStr = `<!DOCTYPE html>
 	{{/* summary */}}
     <div class="container">
         <div class="row justify-content-md-center">
-			{{ RenderSummary .Meta .Metrics }}
+			{{ RenderSummary $.Meta $.Metrics }}
+        </div>
+
+		<div class="row justify-content-md-center">
+			{{ range $idx, $metric := $.Metrics }}
+			{{ RenderUnit $.Meta $idx $metric }}
+			{{ end }}
         </div>
     </div>
 
@@ -251,4 +269,64 @@ var summaryTplStr = `
 `
 
 var unitTplStr = `
+<div class="col-md-12" id="{{ $.Meta.Name }}-QPS">
+	<div class="card-body d-flex justify-content-center">
+        <div class="col-md-12" id="{{ printf "%s-unit-%d-qps" $.Meta.Name $.Idx }}" style="height: 300px;"></div>
+        <script>
+            echarts.init(document.getElementById("{{ printf "%s-unit-%d-qps" $.Meta.Name $.Idx }}")).setOption({
+              title: {
+                text: "{{ .I18n.Title.QPS }}",
+                left: "center",
+              },
+              textStyle: {
+                fontFamily: "{{ .Customize.Font.Echarts }}",
+              },
+              tooltip: {
+                trigger: 'axis',
+                show: true,
+                axisPointer: {
+                    type: "cross"
+                }
+              },
+              toolbox: {
+                feature: {
+                  saveAsImage: {
+                    title: "{{ .I18n.Tooltip.Save }}"
+                  }
+                }
+              },
+              xAxis: {
+                type: "time",
+              },
+              yAxis: {
+                type: "value",
+              },
+              series: [
+                {{ range $key, $measurement := $.Metric.QPS }}
+                {
+                  name: "{{ $key }}",
+                  type: "line",
+                  smooth: true,
+                  symbol: "none",
+                  areaStyle: {},
+                  data: {{ JsonMarshal (MeasurementToSerial $measurement) }}
+                },
+                {{ end }}
+              ]
+            });
+        </script>
+    </div>
+</div>
+
+<div class="col-md-12" id="{{ .Meta.Name }}-QPS">
+avg
+</div>
+
+<div class="col-md-12" id="{{ .Meta.Name }}-QPS">
+rate
+</div>
+
+<div class="col-md-12" id="{{ .Meta.Name }}-QPS">
+errcode
+</div>
 `
