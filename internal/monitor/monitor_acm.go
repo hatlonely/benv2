@@ -20,6 +20,15 @@ type ACMMonitorOptions struct {
 	AccessKeySecret string
 	RegionId        string
 	Endpoint        string
+
+	// api: https://help.aliyun.com/document_detail/391206.html
+	// 监控指标: https://help.aliyun.com/document_detail/163515.html
+	Metrics []struct {
+		Namespace string
+		Metric    string
+		Period    time.Duration
+		Matchers  []Matcher
+	}
 }
 
 func NewACMMonitorWithOptions(options *ACMMonitorOptions) (*ACMMonitor, error) {
@@ -53,6 +62,22 @@ type ACMMonitor struct {
 func (m *ACMMonitor) Collect(startTime time.Time, endTime time.Time) (map[string][]*recorder.Measurement, error) {
 	measurementMap := map[string][]*recorder.Measurement{}
 
+	for _, metric := range m.options.Metrics {
+		measurements, err := m.CollectOnce(&CollectOnceReq{
+			Namespace: metric.Namespace,
+			Metric:    metric.Metric,
+			Period:    metric.Period,
+			StartTime: startTime,
+			EndTime:   endTime,
+			Matchers:  metric.Matchers,
+		})
+		if err != nil {
+			return nil, errors.WithMessage(err, "m.CollectOnce failed")
+		}
+
+		measurementMap[fmt.Sprintf("%s.%s", metric.Namespace, metric.Metric)] = measurements
+	}
+
 	return measurementMap, nil
 }
 
@@ -62,7 +87,7 @@ type Matcher struct {
 	Operator string
 }
 
-type MeasurementReq struct {
+type CollectOnceReq struct {
 	Namespace string
 	Metric    string
 	Period    time.Duration
@@ -71,7 +96,7 @@ type MeasurementReq struct {
 	Matchers  []Matcher
 }
 
-func (m *ACMMonitor) CollectOnce(req *MeasurementReq) ([]*recorder.Measurement, error) {
+func (m *ACMMonitor) CollectOnce(req *CollectOnceReq) ([]*recorder.Measurement, error) {
 	cursorParams := &openapi.Params{
 		Action:      tea.String("Cursor"),
 		Version:     tea.String("2021-11-01"),
@@ -119,6 +144,10 @@ func (m *ACMMonitor) CollectOnce(req *MeasurementReq) ([]*recorder.Measurement, 
 
 	buf, _ := jsoniter.Marshal(cursorResV["body"])
 	_ = jsoniter.Unmarshal(buf, &cursorRes)
+
+	if cursorRes.Code != 200 {
+		return nil, errors.Errorf("Code: %d, Message: %s, RequestId: %s", cursorRes.Code, cursorRes.Message, cursorRes.RequestId)
+	}
 
 	// batchGet
 	batchGetParams := &openapi.Params{
@@ -170,6 +199,9 @@ func (m *ACMMonitor) CollectOnce(req *MeasurementReq) ([]*recorder.Measurement, 
 
 	buf, _ = jsoniter.Marshal(batchGetResV["body"])
 	_ = jsoniter.Unmarshal(buf, &batchGetRes)
+	if batchGetRes.Code != 200 {
+		return nil, errors.Errorf("Code: %d, Message: %s, RequestId: %s", batchGetRes.Code, batchGetRes.Message, batchGetRes.RequestId)
+	}
 	//fmt.Println(batchGetResV["body"])
 	//fmt.Println(batchGetRes.Data.Records)
 
