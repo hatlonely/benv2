@@ -24,9 +24,11 @@ type ACMMonitorOptions struct {
 	// api: https://help.aliyun.com/document_detail/391206.html
 	// 监控指标: https://help.aliyun.com/document_detail/163515.html
 	Metrics []struct {
-		Namespace string
-		Metric    string
-		Period    time.Duration
+		Statistic string        `dft:"Average"`
+		Dimension string        `dft:"instanceId"`
+		Namespace string        `dft:"acs_ecs_dashboard"`
+		Metric    string        `dft:"CPUUtilization"`
+		Period    time.Duration `dft:"60s"`
 		Matchers  []Matcher
 	}
 }
@@ -59,11 +61,13 @@ type ACMMonitor struct {
 	client  *openapi.Client
 }
 
-func (m *ACMMonitor) Collect(startTime time.Time, endTime time.Time) (map[string][]*recorder.Measurement, error) {
-	measurementMap := map[string][]*recorder.Measurement{}
+func (m *ACMMonitor) Collect(startTime time.Time, endTime time.Time) (map[string]map[string][]*recorder.Measurement, error) {
+	measurementMap := map[string]map[string][]*recorder.Measurement{}
 
 	for _, metric := range m.options.Metrics {
 		measurements, err := m.CollectOnce(&CollectOnceReq{
+			Statistic: metric.Statistic,
+			Dimension: metric.Dimension,
 			Namespace: metric.Namespace,
 			Metric:    metric.Metric,
 			Period:    metric.Period,
@@ -88,6 +92,8 @@ type Matcher struct {
 }
 
 type CollectOnceReq struct {
+	Statistic string
+	Dimension string
 	Namespace string
 	Metric    string
 	Period    time.Duration
@@ -96,7 +102,7 @@ type CollectOnceReq struct {
 	Matchers  []Matcher
 }
 
-func (m *ACMMonitor) CollectOnce(req *CollectOnceReq) ([]*recorder.Measurement, error) {
+func (m *ACMMonitor) CollectOnce(req *CollectOnceReq) (map[string][]*recorder.Measurement, error) {
 	cursorParams := &openapi.Params{
 		Action:      tea.String("Cursor"),
 		Version:     tea.String("2021-11-01"),
@@ -203,16 +209,24 @@ func (m *ACMMonitor) CollectOnce(req *CollectOnceReq) ([]*recorder.Measurement, 
 		return nil, errors.Errorf("Code: %d, Message: %s, RequestId: %s", batchGetRes.Code, batchGetRes.Message, batchGetRes.RequestId)
 	}
 	//fmt.Println(batchGetResV["body"])
-	//fmt.Println(batchGetRes.Data.Records)
+	fmt.Println(batchGetRes.Data.Records)
 
-	var measurements []*recorder.Measurement
+	measurementMap := map[string][]*recorder.Measurement{}
 	for _, record := range batchGetRes.Data.Records {
-		kvs := map[string]float64{}
+		measurementValuesMap := map[string]float64{}
 		for idx, key := range record.MeasureLabels {
-			kvs[key] = cast.ToFloat64(record.MeasureValues[idx])
+			measurementValuesMap[key] = cast.ToFloat64(record.MeasureValues[idx])
+		}
+		labelValuesMap := map[string]string{}
+		for idx, key := range record.Labels {
+			labelValuesMap[key] = record.LabelValues[idx]
+		}
+		measurements, ok := measurementMap[labelValuesMap[req.Dimension]]
+		if !ok {
+			measurements = []*recorder.Measurement{}
 		}
 
-		val, ok := kvs["Average"]
+		val, ok := measurementValuesMap[req.Statistic]
 		if !ok {
 			val = cast.ToFloat64(record.MeasureValues[0])
 		}
@@ -221,9 +235,10 @@ func (m *ACMMonitor) CollectOnce(req *CollectOnceReq) ([]*recorder.Measurement, 
 			Time:  time.Unix(int64(record.Timestamp/1000), 0),
 			Value: val,
 		})
+		measurementMap[labelValuesMap[req.Dimension]] = measurements
 	}
 
-	return measurements, nil
+	return measurementMap, nil
 }
 
 func MakeParams() *openapi.Params {

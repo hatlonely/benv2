@@ -26,5 +26,7 @@ func NewMonitorWithOptions(options *refx.TypeOptions, opts ...refx.Option) (Moni
 }
 
 type Monitor interface {
-	Collect(startTime time.Time, endTime time.Time) (map[string][]*recorder.Measurement, error)
+	// 第一层 map key 为图表名
+	// 第二层 map key 为序列名
+	Collect(startTime time.Time, endTime time.Time) (map[string]map[string][]*recorder.Measurement, error)
 }

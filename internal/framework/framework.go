@@ -257,9 +257,9 @@ func (fw *Framework) Run() error {
 			return errors.WithMessage(err, "analyst.Meta failed")
 		}
 
-		var measurementMapSlice []map[string][]*recorder.Measurement
+		var measurementMapSlice []map[string]map[string][]*recorder.Measurement
 		for _, timeRange := range meta.TimeRange {
-			measurementMap := map[string][]*recorder.Measurement{}
+			measurementMap := map[string]map[string][]*recorder.Measurement{}
 			for _, monitor_ := range fw.monitors {
 				//mm, err := monitor_.Collect(timeRange.StartTime, timeRange.EndTime)
 				_ = timeRange

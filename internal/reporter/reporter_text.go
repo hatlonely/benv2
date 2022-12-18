@@ -27,7 +27,7 @@ type TextReporter struct {
 	options *TextReporterOptions
 }
 
-func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric, monitors []map[string][]*recorder.Measurement) string {
+func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric, monitors []map[string]map[string][]*recorder.Measurement) string {
 	var buf bytes.Buffer
 
 	for i := range metrics {
@@ -38,7 +38,7 @@ func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric, m
 	return buf.String()
 }
 
-func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metric, monitor_ map[string][]*recorder.Measurement) string {
+func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metric, monitor_ map[string]map[string][]*recorder.Measurement) string {
 	var buf bytes.Buffer
 
 	buf.WriteString(buildParallel(parallel))
@@ -57,7 +57,7 @@ func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metri
 	buf.WriteByte('\n')
 
 	for key, val := range monitor_ {
-		buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, key, map[string][]*recorder.Measurement{key: val}))
+		buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, key, val))
 		buf.WriteByte('\n')
 	}
 
