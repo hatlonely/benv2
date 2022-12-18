@@ -347,7 +347,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 			Time:    time.Now().Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     res,
-			Err:     nil,
+			Err:     "",
 			ResTime: stepResTime,
 			ErrCode: errCode,
 		})
@@ -365,7 +365,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 			Time:    time.Now().Format(time.RFC3339Nano),
 			Req:     req,
 			Res:     nil,
-			Err:     err,
+			Err:     err.Error(),
 			ResTime: stepResTime,
 			ErrCode: "Internal",
 		}

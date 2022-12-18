@@ -57,7 +57,7 @@ type StepStat struct {
 	Time    string
 	Req     interface{}
 	Res     interface{}
-	Err     error
+	Err     string
 	ErrCode string
 	ResTime time.Duration
 }
