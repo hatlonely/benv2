@@ -89,7 +89,9 @@ monitors:
       accessKeySecret: xx
       regionId: cn-shanghai
       metrics:
-        - namespace: acs_ecs_dashboard
+        - statistic: Average
+          dimension: instanceId
+          namespace: acs_ecs_dashboard
           metric: CPUUtilization
           period: 60s
           matchers:
