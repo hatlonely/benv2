@@ -71,8 +71,8 @@ func (m *ACMMonitor) Collect(startTime time.Time, endTime time.Time) (map[string
 			Namespace: metric.Namespace,
 			Metric:    metric.Metric,
 			Period:    metric.Period,
-			StartTime: startTime,
-			EndTime:   endTime,
+			StartTime: startTime.Add(-metric.Period),
+			EndTime:   endTime.Add(metric.Period),
 			Matchers:  metric.Matchers,
 		})
 		if err != nil {
