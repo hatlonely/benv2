@@ -1,0 +1,75 @@
+Name: Example1
+
+Ctx:
+  sh:
+    Type: Shell
+    Options: {}
+
+Source:
+  src:
+    Type: Dict
+    Options:
+      - key1: val1
+        key2: val2
+      - key1: val3
+        key2: val4
+
+Plan:
+  Duration: 5s
+  Interval: 1s
+  Parallel:
+    - unit1: 3
+      unit2: 1
+    - unit1: 5
+      unit2: 2
+  Unit:
+    - Name: unit1
+      Step:
+        - Ctx: sh
+          Success: res.Stdout == "val1 val2"
+          ErrCode: res.Stdout
+          Req:
+            Command: echo -n ${KEY1} ${KEY2}
+            Envs:
+              "#KEY1": source.src.key1
+              "#KEY2": source.src.key2
+        - Ctx: sh
+          Req:
+            Command: echo -n ${KEY3}
+            Envs:
+              "#KEY3": stat.Step[0].Res.Stdout
+    - Name: unit2
+      Step:
+        - Ctx: sh
+          Success: res.Stdout == "val1 val2"
+          ErrCode: res.Stdout
+          Req:
+            Command: echo -n ${KEY1} ${KEY2}
+            Envs:
+              "#KEY1": source.src.key1
+              "#KEY2": source.src.key2
+        - Ctx: sh
+          Req:
+            Command: echo -n ${KEY3}
+            Envs:
+              "#KEY3": stat.Step[0].Res.Stdout
+
+Recorder:
+  Type: File
+  Options:
+    FilePath: ben.json
+    MetaPath: meta.json
+
+Analyst:
+  Type: File
+  Options:
+    FilePath: ben.json
+    MetaPath: meta.json
+
+Statistics:
+  PointNumber: 10
+
+Reporter:
+  Type: Text
+  Options:
+    ValueWidth: 9
