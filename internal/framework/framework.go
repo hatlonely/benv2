@@ -12,6 +12,7 @@ import (
 
 	"github.com/hatlonely/benv2/internal/driver"
 	"github.com/hatlonely/benv2/internal/eval"
+	"github.com/hatlonely/benv2/internal/monitor"
 	"github.com/hatlonely/benv2/internal/recorder"
 	"github.com/hatlonely/benv2/internal/reporter"
 	"github.com/hatlonely/benv2/internal/source"
@@ -39,6 +40,7 @@ type Options struct {
 	Recorder   refx.TypeOptions
 	Analyst    refx.TypeOptions
 	Statistics recorder.StatisticsOptions
+	Monitors   []refx.TypeOptions
 	Reporter   refx.TypeOptions
 }
 
@@ -122,6 +124,15 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 		return nil, errors.WithMessage(err, "reporter.NewReporterWithOptions failed")
 	}
 
+	var monitors []monitor.Monitor
+	for _, opt := range options.Monitors {
+		monitor_, err := monitor.NewMonitorWithOptions(&opt, opts...)
+		if err != nil {
+			return nil, errors.WithMessage(err, "monitor.NewMonitorWithOptions failed")
+		}
+		monitors = append(monitors, monitor_)
+	}
+
 	return &Framework{
 		id:         options.ID,
 		name:       options.Name,
@@ -131,6 +142,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 		recorder:   recorder_,
 		analyst:    analyst,
 		statistics: statistics,
+		monitors:   monitors,
 		reporter:   reporter_,
 	}, nil
 }
@@ -144,6 +156,7 @@ type Framework struct {
 	recorder   recorder.Recorder
 	analyst    recorder.Analyst
 	statistics *recorder.Statistics
+	monitors   []monitor.Monitor
 	reporter   reporter.Reporter
 }
 
@@ -244,7 +257,24 @@ func (fw *Framework) Run() error {
 			return errors.WithMessage(err, "analyst.Meta failed")
 		}
 
-		fmt.Println(fw.reporter.Report(meta, metrics))
+		var measurementMapSlice []map[string][]*recorder.Measurement
+		for _, timeRange := range meta.TimeRange {
+			measurementMap := map[string][]*recorder.Measurement{}
+			for _, monitor_ := range fw.monitors {
+				//mm, err := monitor_.Collect(timeRange.StartTime, timeRange.EndTime)
+				_ = timeRange
+				mm, err := monitor_.Collect(time.Now().Add(-10*time.Minute), time.Now())
+				if err != nil {
+					return errors.WithMessage(err, "monitor.Collect failed")
+				}
+				for key, val := range mm {
+					measurementMap[key] = val
+				}
+			}
+			measurementMapSlice = append(measurementMapSlice, measurementMap)
+		}
+
+		fmt.Println(fw.reporter.Report(meta, metrics, measurementMapSlice))
 	}
 
 	return nil

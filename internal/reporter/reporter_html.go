@@ -98,7 +98,7 @@ type HtmlReporter struct {
 	unitTpl    *template.Template
 }
 
-func (r *HtmlReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) string {
+func (r *HtmlReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric, monitors []map[string][]*recorder.Measurement) string {
 	var buf bytes.Buffer
 
 	if err := r.reportTpl.Execute(&buf, map[string]interface{}{

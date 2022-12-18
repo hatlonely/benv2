@@ -26,5 +26,5 @@ func NewReporterWithOptions(options *refx.TypeOptions, opts ...refx.Option) (Rep
 }
 
 type Reporter interface {
-	Report(meta *recorder.Meta, metric []*recorder.Metric) string
+	Report(meta *recorder.Meta, metrics []*recorder.Metric, monitors []map[string][]*recorder.Measurement) string
 }

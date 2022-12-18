@@ -80,10 +80,25 @@ analyst:
     metaPath: meta.json
 
 statistics:
-  pointNumber: 100
+  pointNumber: 10
+
+monitors:
+  - type: ACM
+    options:
+      accessKeyId: xx
+      accessKeySecret: xx
+      regionId: cn-shanghai
+      metrics:
+        - namespace: acs_ecs_dashboard
+          metric: CPUUtilization
+          period: 60s
+          matchers:
+            - label: instanceId
+              value: i-uf6d23s4d6t1x6rpdmld
+              operator: EQUALS
 
 reporter:
-  type: Html
+  type: Json
   options:
     valueWidth: 9
 `

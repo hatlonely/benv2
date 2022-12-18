@@ -27,7 +27,7 @@ type TextReporter struct {
 	options *TextReporterOptions
 }
 
-func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric) string {
+func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric, monitors []map[string][]*recorder.Measurement) string {
 	var buf bytes.Buffer
 
 	for i := range metrics {
