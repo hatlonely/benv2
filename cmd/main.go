@@ -16,7 +16,6 @@ var Version string
 type Options struct {
 	Help     bool   `flag:"-h; usage: show help info"`
 	Version  bool   `flag:"-v; usage: show version"`
-	Action   string `flag:"-a; usage: actions, one of [dep/run/cmd/env/desc/listEnv/listTask]"`
 	Playbook string `flag:"usage: playbook file; default: ben.yaml"`
 }
 
@@ -31,11 +30,16 @@ const (
 func main() {
 	var options Options
 	refx.Must(flag.Struct(&options, refx.WithCamelName()))
+	refx.Must(flag.Parse())
 	if options.Help {
 		strx.Trac(flag.Usage())
 		strx.Trac(`
   ben -a run --playbook ben.yaml
 `)
+		return
+	}
+	if options.Version {
+		strx.Trac(Version)
 		return
 	}
 
