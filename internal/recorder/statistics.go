@@ -214,7 +214,7 @@ func (s *Statistics) aggregation(id string, analyst Analyst) ([]map[string][]*Ag
 			aggregationMap[stat.Name] = aggregations
 		}
 		if idx >= len(aggregationMap[stat.Name]) {
-			idx = len(aggregationMap[stat.Name])
+			idx = len(aggregationMap[stat.Name]) - 1
 		}
 
 		aggregation := aggregationMap[stat.Name][idx]
