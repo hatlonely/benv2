@@ -106,6 +106,7 @@ func (r *HtmlReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric, m
 		"Customize": r.options,
 		"I18n":      r.i18n,
 		"Metrics":   metrics,
+		"Monitors":  monitors,
 	}); err != nil {
 		return fmt.Sprintf("%+v", errors.Wrap(err, "reportTpl.Execute failed"))
 	}
@@ -128,7 +129,7 @@ func (r *HtmlReporter) RenderSummary(meta *recorder.Meta, metrics []*recorder.Me
 	return buf.String()
 }
 
-func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, idx int, metric *recorder.Metric) string {
+func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, idx int, metric *recorder.Metric, monitor_ map[string]map[string][]*recorder.Measurement) string {
 	var buf bytes.Buffer
 
 	if err := r.unitTpl.Execute(&buf, map[string]interface{}{
@@ -136,6 +137,7 @@ func (r *HtmlReporter) RenderUnit(meta *recorder.Meta, idx int, metric *recorder
 		"Customize": r.options,
 		"I18n":      r.i18n,
 		"Metric":    metric,
+		"Monitor":   monitor_,
 		"Idx":       idx,
 	}); err != nil {
 		return fmt.Sprintf("%+v", errors.Wrap(err, "unitTpl.Execute failed"))
@@ -212,7 +214,7 @@ var reportTplStr = `<!DOCTYPE html>
 
 		<div class="row justify-content-md-center">
 			{{ range $idx, $metric := $.Metrics }}
-			{{ RenderUnit $.Meta $idx $metric }}
+			{{ RenderUnit $.Meta $idx $metric (index $.Monitors $idx) }}
 			{{ end }}
         </div>
     </div>
@@ -462,5 +464,58 @@ var unitTplStr = `
         </script>
     </div>
 </div>
+
+<div class="card-header justify-content-between d-flex">{{ .I18n.Title.Monitor }}</div>
+{{ range $graph, $monitor := $.Monitor }}
+<div class="col-md-12">
+	<div class="card-body d-flex justify-content-center">
+        <div class="col-md-12" id="{{ printf "%s-unit-%d-monitor-%s" $.Meta.Name $.Idx $graph }}" style="height: 300px;"></div>
+        <script>
+            echarts.init(document.getElementById("{{ printf "%s-unit-%d-monitor-%s" $.Meta.Name $.Idx $graph }}")).setOption({
+              title: {
+                text: "{{ $graph }}",
+                left: "center",
+              },
+              textStyle: {
+                fontFamily: "{{ .Customize.Font.Echarts }}",
+              },
+              tooltip: {
+                trigger: 'axis',
+                show: true,
+                axisPointer: {
+                    type: "cross"
+                }
+              },
+              toolbox: {
+                feature: {
+                  saveAsImage: {
+                    title: "{{ .I18n.Tooltip.Save }}"
+                  }
+                }
+              },
+              xAxis: {
+                type: "time",
+              },
+              yAxis: {
+                type: "value",
+              },
+              series: [
+                {{ range $key, $measurement := $monitor }}
+                {
+                  name: "{{ $key }}",
+                  type: "line",
+                  smooth: true,
+                  symbol: "none",
+                  areaStyle: {},
+                  data: {{ JsonMarshal (MeasurementToSerial $measurement) }}
+                },
+                {{ end }}
+              ]
+            });
+        </script>
+    </div>
+</div>
+{{ end }}
+
 </div>
 `

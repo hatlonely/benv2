@@ -16,6 +16,7 @@ type Title struct {
 	AvgResTimeMs        string
 	SuccessRatePercent  string
 	ErrCodeDistribution string
+	Monitor             string
 }
 
 type Tooltip struct {
@@ -40,6 +41,7 @@ var defaultI18n = map[string]*I18n{
 			AvgResTimeMs:        "AvgResTimeMs",
 			SuccessRatePercent:  "SuccessRatePercent",
 			ErrCodeDistribution: "ErrCodeDistribution",
+			Monitor:             "Monitor",
 		},
 		Tooltip: Tooltip{
 			Save: "Save",
