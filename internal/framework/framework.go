@@ -322,10 +322,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 				"res": res,
 			})
 			if e != nil {
-				return nil, errors.WithMessage(err, "step.Success.Evaluate failed")
-			}
-			if !ok {
-				return nil, errors.Errorf("success should be a bool condition")
+				return nil, errors.WithMessage(e, "step.Success.Evaluate failed")
 			}
 			if !success {
 				if step.ErrCode == nil {
@@ -335,7 +332,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 						"res": res,
 					})
 					if e != nil {
-						return nil, errors.WithMessage(err, "step.ErrCode.Evaluate failed")
+						return nil, errors.WithMessage(e, "step.ErrCode.Evaluate failed")
 					}
 					errCode = fmt.Sprintf("%v", errCodeV)
 				}
