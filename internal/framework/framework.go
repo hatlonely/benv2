@@ -110,7 +110,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 	if options.Analyst.Type != "" {
 		analyst, err = recorder.NewAnalystWithOptions(&options.Analyst, opts...)
 		if err != nil {
-			return nil, errors.WithMessage(err, "recorder.NewRecorderWithOptions failed")
+			return nil, errors.WithMessage(err, "recorder.NewAnalystWithOptions failed")
 		}
 	}
 

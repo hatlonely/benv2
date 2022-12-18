@@ -14,9 +14,11 @@ import (
 var Version string
 
 type Options struct {
-	Help     bool   `flag:"-h; usage: show help info"`
-	Version  bool   `flag:"-v; usage: show version"`
-	Playbook string `flag:"usage: playbook file; default: ben.yaml"`
+	Help      bool   `flag:"-h; usage: show help info"`
+	Version   bool   `flag:"-v; usage: show version"`
+	Action    string `flag:"-a; usage: actions, one of [desc/run]"`
+	Playbook  string `flag:"usage: playbook file; default: ben.yaml"`
+	CamelName bool   `flag:"usage: use camel name as playbook field style"`
 }
 
 const (
@@ -49,13 +51,23 @@ func main() {
 		os.Exit(ECInvalidPlaybook)
 	}
 
+	var opts []refx.Option
+	if options.CamelName {
+		opts = append(opts, refx.WithCamelName())
+	}
+
 	var frameworkOptions framework.Options
-	if err := cfg.Unmarshal(&frameworkOptions, refx.WithCamelName()); err != nil {
+	if err := cfg.Unmarshal(&frameworkOptions, opts...); err != nil {
 		strx.Warn(err.Error())
 		os.Exit(ECUnmarshalOptionsFailed)
 	}
 
-	fw, err := framework.NewFrameworkWithOptions(&frameworkOptions, refx.WithCamelName())
+	if options.Action == "desc" {
+		strx.Info(strx.JsonMarshalIndentSortKeys(frameworkOptions))
+		os.Exit(ECSuccess)
+	}
+
+	fw, err := framework.NewFrameworkWithOptions(&frameworkOptions, opts...)
 	if err != nil {
 		strx.Warn(err.Error())
 		os.Exit(ECFrameworkNewFailed)
