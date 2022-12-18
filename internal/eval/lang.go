@@ -2,12 +2,14 @@ package eval
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/PaesslerAG/gval"
 	"github.com/generikvault/gvalstrings"
 	"github.com/hatlonely/go-kit/cast"
+	uuid "github.com/satori/go.uuid"
 )
 
 var Lang = gval.NewLanguage(
@@ -57,5 +59,14 @@ var Lang = gval.NewLanguage(
 			return cast.ToIntE(strings.Fields(v)[0])
 		}
 		return cast.ToIntE(x)
+	}),
+	gval.Function("uuid", func() (string, error) {
+		return uuid.NewV4().String(), nil
+	}),
+	gval.Function("random", func() (float64, error) {
+		return rand.Float64(), nil
+	}),
+	gval.Function("randInt", func(n int64) (int64, error) {
+		return rand.Int63n(n), nil
 	}),
 )
