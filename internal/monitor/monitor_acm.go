@@ -209,7 +209,7 @@ func (m *ACMMonitor) CollectOnce(req *CollectOnceReq) (map[string][]*recorder.Me
 		return nil, errors.Errorf("Code: %d, Message: %s, RequestId: %s", batchGetRes.Code, batchGetRes.Message, batchGetRes.RequestId)
 	}
 	//fmt.Println(batchGetResV["body"])
-	fmt.Println(batchGetRes.Data.Records)
+	//fmt.Println(batchGetRes.Data.Records)
 
 	measurementMap := map[string][]*recorder.Measurement{}
 	for _, record := range batchGetRes.Data.Records {
