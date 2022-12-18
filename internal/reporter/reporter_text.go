@@ -31,14 +31,14 @@ func (r *TextReporter) Report(meta *recorder.Meta, metrics []*recorder.Metric, m
 	var buf bytes.Buffer
 
 	for i := range metrics {
-		buf.WriteString(r.buildUnit(meta.Parallel[i], metrics[i]))
+		buf.WriteString(r.buildUnit(meta.Parallel[i], metrics[i], monitors[i]))
 		buf.WriteString("==================================================================================\n")
 	}
 
 	return buf.String()
 }
 
-func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metric) string {
+func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metric, monitor_ map[string][]*recorder.Measurement) string {
 	var buf bytes.Buffer
 
 	buf.WriteString(buildParallel(parallel))
@@ -55,6 +55,11 @@ func (r *TextReporter) buildUnit(parallel map[string]int, metric *recorder.Metri
 	buf.WriteByte('\n')
 	buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, "SuccessRatePercent", metric.SuccessRatePercent))
 	buf.WriteByte('\n')
+
+	for key, val := range monitor_ {
+		buf.WriteString(buildMeasurementMap(r.options.TitleWidth, r.options.ValueWidth, key, map[string][]*recorder.Measurement{key: val}))
+		buf.WriteByte('\n')
+	}
 
 	return buf.String()
 }
@@ -151,6 +156,7 @@ func buildErrCodeDistribution(errCodeDistribution map[string]map[string]int) str
 func appendCenter(buf *bytes.Buffer, width int, str string) {
 	if len(str) >= width {
 		buf.WriteString(str)
+		return
 	}
 	space := width - len(str)
 	left := space / 2
