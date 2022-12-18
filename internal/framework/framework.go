@@ -21,6 +21,7 @@ import (
 type Options struct {
 	ID     string
 	Name   string
+	Var    interface{}
 	Ctx    map[string]refx.TypeOptions
 	Source map[string]refx.TypeOptions
 	Plan   struct {
@@ -136,6 +137,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 	return &Framework{
 		id:         options.ID,
 		name:       options.Name,
+		var_:       options.Var,
 		ctx:        ctx,
 		source:     source_,
 		plan:       plan,
@@ -150,6 +152,7 @@ func NewFrameworkWithOptions(options *Options, opts ...refx.Option) (*Framework,
 type Framework struct {
 	id         string
 	name       string
+	var_       interface{}
 	ctx        map[string]driver.Driver
 	source     map[string]source.Source
 	plan       *PlanInfo
@@ -261,9 +264,9 @@ func (fw *Framework) Run() error {
 		for _, timeRange := range meta.TimeRange {
 			measurementMap := map[string]map[string][]*recorder.Measurement{}
 			for _, monitor_ := range fw.monitors {
-				//mm, err := monitor_.Collect(timeRange.StartTime, timeRange.EndTime)
-				_ = timeRange
-				mm, err := monitor_.Collect(time.Now().Add(-10*time.Minute), time.Now())
+				mm, err := monitor_.Collect(timeRange.StartTime, timeRange.EndTime)
+				//_ = timeRange
+				//mm, err := monitor_.Collect(time.Now().Add(-10*time.Minute), time.Now())
 				if err != nil {
 					return errors.WithMessage(err, "monitor.Collect failed")
 				}
@@ -298,6 +301,7 @@ func (fw *Framework) RunUnit(info *UnitInfo) (*recorder.UnitStat, error) {
 		req, err = step.Req.Evaluate(map[string]interface{}{
 			"source": sourceMap,
 			"stat":   unitStat,
+			"var":    fw.var_,
 		})
 		if err != nil {
 			return nil, errors.WithMessage(err, "step.Req.Evaluate failed")
