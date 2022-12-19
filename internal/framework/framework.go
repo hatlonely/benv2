@@ -183,6 +183,52 @@ type StepInfo struct {
 }
 
 func (fw *Framework) Run() error {
+	if err := fw.RunPlan(); err != nil {
+		return errors.WithMessage(err, "fw.RunPlan failed")
+	}
+
+	if fw.analyst != nil {
+		if err := fw.Analyst(); err != nil {
+			return errors.WithMessage(err, "fw.Analyst failed")
+		}
+	}
+
+	return nil
+}
+
+func (fw *Framework) Analyst() error {
+	metrics, err := fw.statistics.Statistics(fw.id, fw.analyst)
+	if err != nil {
+		return errors.WithMessage(err, "statistics.Statistics failed")
+	}
+
+	meta, err := fw.analyst.Meta()
+	if err != nil {
+		return errors.WithMessage(err, "analyst.Meta failed")
+	}
+
+	var measurementMapSlice []map[string]map[string][]*recorder.Measurement
+	for _, timeRange := range meta.TimeRange {
+		measurementMap := map[string]map[string][]*recorder.Measurement{}
+		for _, monitor_ := range fw.monitors {
+			mm, err := monitor_.Collect(timeRange.StartTime, timeRange.EndTime)
+			//_ = timeRange
+			//mm, err := monitor_.Collect(time.Now().Add(-10*time.Minute), time.Now())
+			if err != nil {
+				return errors.WithMessage(err, "monitor.Collect failed")
+			}
+			for key, val := range mm {
+				measurementMap[key] = val
+			}
+		}
+		measurementMapSlice = append(measurementMapSlice, measurementMap)
+	}
+
+	fmt.Println(fw.reporter.Report(meta, metrics, measurementMapSlice))
+	return nil
+}
+
+func (fw *Framework) RunPlan() error {
 	meta := &recorder.Meta{
 		ID:       fw.id,
 		Name:     fw.name,
@@ -248,37 +294,6 @@ func (fw *Framework) Run() error {
 	}
 
 	_ = fw.recorder.Close()
-
-	if fw.analyst != nil {
-		metrics, err := fw.statistics.Statistics(fw.id, fw.analyst)
-		if err != nil {
-			return errors.WithMessage(err, "statistics.Statistics failed")
-		}
-
-		meta, err := fw.analyst.Meta()
-		if err != nil {
-			return errors.WithMessage(err, "analyst.Meta failed")
-		}
-
-		var measurementMapSlice []map[string]map[string][]*recorder.Measurement
-		for _, timeRange := range meta.TimeRange {
-			measurementMap := map[string]map[string][]*recorder.Measurement{}
-			for _, monitor_ := range fw.monitors {
-				mm, err := monitor_.Collect(timeRange.StartTime, timeRange.EndTime)
-				//_ = timeRange
-				//mm, err := monitor_.Collect(time.Now().Add(-10*time.Minute), time.Now())
-				if err != nil {
-					return errors.WithMessage(err, "monitor.Collect failed")
-				}
-				for key, val := range mm {
-					measurementMap[key] = val
-				}
-			}
-			measurementMapSlice = append(measurementMapSlice, measurementMap)
-		}
-
-		fmt.Println(fw.reporter.Report(meta, metrics, measurementMapSlice))
-	}
 
 	return nil
 }
