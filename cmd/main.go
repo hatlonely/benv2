@@ -16,7 +16,7 @@ var Version string
 type Options struct {
 	Help      bool   `flag:"-h; usage: show help info"`
 	Version   bool   `flag:"-v; usage: show version"`
-	Action    string `flag:"-a; usage: actions, one of [desc/run]"`
+	Action    string `flag:"-a; default: run;usage: actions, one of [desc/run/analyst]"`
 	Playbook  string `flag:"usage: playbook file; default: ben.yaml"`
 	CamelName bool   `flag:"usage: use camel name as playbook field style"`
 }
@@ -27,6 +27,7 @@ const (
 	ECUnmarshalOptionsFailed = 2
 	ECFrameworkNewFailed     = 3
 	ECFrameworkRunFailed     = 4
+	ECFrameworkAnalystFailed = 5
 )
 
 func main() {
@@ -72,9 +73,17 @@ func main() {
 		strx.Warn(err.Error())
 		os.Exit(ECFrameworkNewFailed)
 	}
-	if err := fw.Run(); err != nil {
-		strx.Warn(err.Error())
-		os.Exit(ECFrameworkRunFailed)
+
+	if options.Action == "run" {
+		if err := fw.Run(); err != nil {
+			strx.Warn(err.Error())
+			os.Exit(ECFrameworkRunFailed)
+		}
+	} else if options.Action == "analyst" {
+		if err := fw.Analyst(); err != nil {
+			strx.Warn(err.Error())
+			os.Exit(ECFrameworkAnalystFailed)
+		}
 	}
 
 	os.Exit(ECSuccess)
